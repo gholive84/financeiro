@@ -54,7 +54,14 @@ const emptyCategory = { name: '', icon: 'tag', color: '#6366F1', type: 'expense'
 function CategoryForm({ initial, categories, onSave, onCancel }) {
   const [form, setForm] = useState(initial ? { ...initial, parent_id: initial.parent_id || '' } : emptyCategory);
   const [loading, setLoading] = useState(false);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm(f => {
+    const updated = { ...f, [k]: v };
+    if (k === 'parent_id' && v) {
+      const parent = categories.find(c => String(c.id) === String(v));
+      if (parent) updated.type = parent.type;
+    }
+    return updated;
+  });
 
   // Pais disponíveis: apenas categorias sem parent (top-level) do mesmo tipo
   const parents = categories.filter(c => !c.parent_id && c.id !== initial?.id && c.type === form.type);

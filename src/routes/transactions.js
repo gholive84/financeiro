@@ -6,12 +6,14 @@ const { v4: uuidv4 } = require('uuid');
 const transactionSelect = `
   SELECT
     t.*,
-    c.name as category_name, c.icon as category_icon, c.color as category_color,
+    c.name as category_name, c.icon as category_icon, c.color as category_color, c.parent_id as category_parent_id,
+    pc.name as category_parent_name,
     a.name as account_name, a.type as account_type, a.color as account_color,
     cc.name as credit_card_name, cc.color as credit_card_color, cc.bank as credit_card_bank,
     u.username as user_username, u.name as user_name
   FROM transactions t
   LEFT JOIN categories c ON t.category_id = c.id
+  LEFT JOIN categories pc ON c.parent_id = pc.id
   LEFT JOIN accounts a ON t.account_id = a.id
   LEFT JOIN credit_cards cc ON t.credit_card_id = cc.id
   LEFT JOIN users u ON t.user_id = u.id
@@ -33,6 +35,8 @@ function formatTransaction(row) {
       name: row.category_name,
       icon: row.category_icon,
       color: row.category_color,
+      parent_id: row.category_parent_id || null,
+      parent_name: row.category_parent_name || null,
     } : null,
     account: row.account_id ? {
       id: row.account_id,
@@ -68,6 +72,7 @@ router.get('/', async (req, res, next) => {
     if (account_id) { sql += ' AND t.account_id = ?'; params.push(account_id); }
     if (credit_card_id) { sql += ' AND t.credit_card_id = ?'; params.push(credit_card_id); }
     if (status) { sql += ' AND t.status = ?'; params.push(status); }
+    if (req.query.category_id) { sql += ' AND t.category_id = ?'; params.push(req.query.category_id); }
 
     sql += ' ORDER BY t.date DESC, t.created_at DESC';
     const [rows] = await db.query(sql, params);

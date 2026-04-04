@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/shared/Modal';
 import TransactionForm from '../components/Transactions/TransactionForm';
 import TransactionList from '../components/Transactions/TransactionList';
+import { useApp } from '../context/AppContext';
 
 export default function TransactionsPage() {
   const now = new Date();
@@ -11,8 +12,10 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [filters, setFilters] = useState({ month: now.getMonth() + 1, year: now.getFullYear(), type: '', status: '' });
+  const [filters, setFilters] = useState({ month: now.getMonth() + 1, year: now.getFullYear(), type: '', status: '', category_id: '' });
   const [search, setSearch] = useState('');
+  const { categories, loadCategories } = useApp();
+  useEffect(() => { loadCategories(); }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -21,6 +24,7 @@ export default function TransactionsPage() {
     if (filters.year) params.set('year', filters.year);
     if (filters.type) params.set('type', filters.type);
     if (filters.status) params.set('status', filters.status);
+    if (filters.category_id) params.set('category_id', filters.category_id);
     const { data } = await api.get(`/transactions?${params}`);
     setTransactions(data);
     setLoading(false);
@@ -104,6 +108,23 @@ export default function TransactionsPage() {
             <option value="">Todos os status</option>
             <option value="paid">Pagos</option>
             <option value="pending">Pendentes</option>
+          </select>
+          <select
+            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={filters.category_id} onChange={e => setFilters(f => ({ ...f, category_id: e.target.value }))}
+          >
+            <option value="">Todas as categorias</option>
+            {categories.filter(c => !c.parent_id).map(parent => {
+              const subs = categories.filter(c => String(c.parent_id) === String(parent.id));
+              return subs.length > 0 ? (
+                <optgroup key={parent.id} label={parent.name}>
+                  <option value={parent.id}>{parent.name}</option>
+                  {subs.map(c => <option key={c.id} value={c.id}>↳ {c.name}</option>)}
+                </optgroup>
+              ) : (
+                <option key={parent.id} value={parent.id}>{parent.name}</option>
+              );
+            })}
           </select>
         </div>
       </div>

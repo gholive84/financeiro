@@ -37,7 +37,7 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
                   </span>
                   {t.category && (
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>
-                      {t.category.name}
+                      {t.category.parent_name ? `${t.category.parent_name} › ${t.category.name}` : t.category.name}
                     </span>
                   )}
                   {t.account && (
@@ -87,7 +87,7 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
           <div className="sm:hidden flex flex-wrap items-center gap-1.5 mt-2 pl-11">
             {t.category && (
               <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>
-                {t.category.name}
+                {t.category.parent_name ? `${t.category.parent_name} › ${t.category.name}` : t.category.name}
               </span>
             )}
             {t.account && (
