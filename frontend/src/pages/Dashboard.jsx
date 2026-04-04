@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Wallet, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import ProgressBar from '../components/shared/ProgressBar';
 
@@ -22,10 +22,12 @@ function StatCard({ label, value, icon: Icon, color, sub }) {
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
+    setLoading(true);
     api.get('/dashboard').then(r => setData(r.data)).finally(() => setLoading(false));
-  }, []);
+  }, [location.key]);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Carregando...</div>;
   if (!data) return null;

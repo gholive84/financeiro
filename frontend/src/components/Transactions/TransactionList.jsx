@@ -19,15 +19,32 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
   return (
     <div className="space-y-2">
       {transactions.map(t => (
-        <div key={t.id} className="flex items-center gap-3 bg-white rounded-xl border border-slate-100 px-4 py-3 hover:shadow-sm transition-shadow">
-          <CategoryIcon icon={t.category?.icon} color={t.category?.color || '#64748B'} />
+        <div key={t.id} className="bg-white rounded-xl border border-slate-100 px-4 py-3 hover:shadow-sm transition-shadow">
+          <div className="flex items-center gap-3">
+            <CategoryIcon icon={t.category?.icon} color={t.category?.color || '#64748B'} />
 
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-800 truncate">{t.description}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs text-slate-400">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-800 truncate">{t.description}</p>
+              <p className="text-xs text-slate-400 mt-0.5">
                 {String(t.date).split('T')[0].split('-').reverse().join('/')}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
+                {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
               </span>
+              <button onClick={() => onEdit(t)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors">
+                <Pencil size={14} />
+              </button>
+              <button onClick={() => onDelete(t.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+
+          {(t.category || t.credit_card || t.status === 'pending' || t.installment_total > 1 || t.user) && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-2 pl-11">
               {t.category && (
                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>
                   {t.category.name}
@@ -50,20 +67,7 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
                 <span className="text-xs text-slate-300">@{t.user.username}</span>
               )}
             </div>
-          </div>
-
-          <span className={`text-sm font-semibold flex-shrink-0 ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-            {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
-          </span>
-
-          <div className="flex gap-1 flex-shrink-0">
-            <button onClick={() => onEdit(t)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors">
-              <Pencil size={14} />
-            </button>
-            <button onClick={() => onDelete(t.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
-              <Trash2 size={14} />
-            </button>
-          </div>
+          )}
         </div>
       ))}
     </div>

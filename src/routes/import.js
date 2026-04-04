@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const fs = require('fs');
 const axios = require('axios');
 const db = require('../db');
 
-const upload = multer({ dest: '/tmp/uploads/', limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
 async function interpretWithGPT(text, categories, accounts, creditCards) {
@@ -75,31 +74,23 @@ router.post('/preview', upload.single('file'), async (req, res, next) => {
 
     let text = '';
     const mime = req.file.mimetype;
-    const filePath = req.file.path;
+    const buffer = req.file.buffer;
 
     if (mime === 'application/pdf' || req.file.originalname?.endsWith('.pdf')) {
       const pdfParse = require('pdf-parse');
-      const buffer = fs.readFileSync(filePath);
       const data = await pdfParse(buffer);
       text = data.text;
     } else {
       // CSV ou TXT — tenta UTF-8, fallback para Latin-1 (padrão dos bancos brasileiros)
-      try {
-        text = fs.readFileSync(filePath, 'utf8');
-        if (text.includes('\uFFFD')) throw new Error('not utf8');
-      } catch {
-        text = fs.readFileSync(filePath, 'latin1');
-      }
+      const utf8 = buffer.toString('utf8');
+      text = utf8.includes('\uFFFD') ? buffer.toString('latin1') : utf8;
     }
-
-    fs.unlinkSync(filePath);
 
     if (!text.trim()) return res.status(400).json({ error: 'Não foi possível extrair texto do arquivo' });
 
     const result = await interpretWithGPT(text, categories, accounts, creditCards);
     res.json({ transactions: result.transactions, total: result.transactions.length });
   } catch (err) {
-    if (req.file?.path) fs.unlink(req.file.path, () => {});
     next(err);
   }
 });
