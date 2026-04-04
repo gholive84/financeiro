@@ -58,11 +58,12 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
     const updated = { ...f, [k]: v };
     if (k === 'parent_id' && v) {
       const parent = categories.find(c => String(c.id) === String(v));
-      if (parent) updated.type = parent.type;
+      if (parent) { updated.type = parent.type; updated.color = parent.color; }
     }
     return updated;
   });
 
+  const isSubcategory = !!form.parent_id;
   // Pais disponíveis: apenas categorias sem parent (top-level) do mesmo tipo
   const parents = categories.filter(c => !c.parent_id && c.id !== initial?.id && c.type === form.type);
 
@@ -80,7 +81,7 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="flex rounded-xl overflow-hidden border border-slate-200">
+      <div className={`flex rounded-xl overflow-hidden border border-slate-200 ${isSubcategory ? 'opacity-60 pointer-events-none' : ''}`}>
         {['expense', 'income'].map(t => (
           <button type="button" key={t}
             className={`flex-1 py-2 text-sm font-semibold transition-colors
@@ -92,6 +93,7 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
           </button>
         ))}
       </div>
+      {isSubcategory && <p className="text-xs text-slate-400 -mt-2">Tipo herdado da categoria pai</p>}
 
       <input required placeholder="Nome da categoria" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={form.name} onChange={e => set('name', e.target.value)} />
@@ -109,9 +111,10 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
 
       <div className="flex items-start gap-3">
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Cor</label>
-          <input type="color" className="w-14 h-10 border border-slate-200 rounded-xl px-1 cursor-pointer"
-            value={form.color} onChange={e => set('color', e.target.value)} />
+          <label className="text-xs text-slate-500 mb-1 block">Cor{isSubcategory && ' (do pai)'}</label>
+          <input type="color" className={`w-14 h-10 border border-slate-200 rounded-xl px-1 ${isSubcategory ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+            value={form.color} onChange={e => !isSubcategory && set('color', e.target.value)}
+            disabled={isSubcategory} />
         </div>
         <div className="flex-1 min-w-0">
           <label className="text-xs text-slate-500 mb-1 block">Ícone: <span className="font-semibold text-slate-700">{form.icon}</span></label>
@@ -166,7 +169,12 @@ export default function CategoriesPage() {
   };
 
   const openNew = (parentId = null) => {
-    setEditing(parentId ? { parent_id: parentId } : null);
+    if (parentId) {
+      const parent = categories.find(c => c.id === parentId);
+      setEditing({ parent_id: parentId, type: parent?.type || 'expense', color: parent?.color || '#6366F1' });
+    } else {
+      setEditing(null);
+    }
     setModal(true);
   };
 
