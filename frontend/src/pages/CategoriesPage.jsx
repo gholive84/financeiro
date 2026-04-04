@@ -27,9 +27,10 @@ const iconOptions = [
   'star','sun','moon','zap','leaf','globe','baby','dog','cat','flower-2',
 ];
 
+const toIconName = (s) => s?.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^(.)/, (_, c) => c.toUpperCase());
+
 function CatIcon({ icon, color, size = 16 }) {
-  const name = icon?.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-  const LucideIcon = Icons[name] || Icons.Tag;
+  const LucideIcon = Icons[toIconName(icon)] || Icons.Tag;
   return <LucideIcon size={size} style={{ color }} />;
 }
 
@@ -49,8 +50,7 @@ function IconPicker({ value, color, onChange }) {
         value={search} onChange={e => setSearch(e.target.value)} />
       <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
         {filtered.map(ic => {
-          const name = ic.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-          const Icon = Icons[name] || Icons.Tag;
+          const Icon = Icons[toIconName(ic)] || Icons.Tag;
           const active = value === ic;
           return (
             <button key={ic} type="button" title={ic}

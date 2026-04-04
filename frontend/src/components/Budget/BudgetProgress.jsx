@@ -3,7 +3,7 @@ import ProgressBar from '../shared/ProgressBar';
 import * as Icons from 'lucide-react';
 
 function CatIcon({ icon, color }) {
-  const LucideIcon = Icons[icon?.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] || Icons.Tag;
+  const LucideIcon = Icons[icon?.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^(.)/,(_, c) => c.toUpperCase())] || Icons.Tag;
   return (
     <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color + '22' }}>
       <LucideIcon size={16} style={{ color }} />

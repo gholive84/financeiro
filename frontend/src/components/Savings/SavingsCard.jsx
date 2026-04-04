@@ -4,7 +4,7 @@ import { Pencil, Trash2, Plus, Minus } from 'lucide-react';
 import ProgressBar from '../shared/ProgressBar';
 
 function SavingsIcon({ icon, color }) {
-  const LucideIcon = Icons[icon?.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] || Icons.PiggyBank;
+  const LucideIcon = Icons[icon?.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^(.)/, (_, c) => c.toUpperCase())] || Icons.PiggyBank;
   return (
     <span className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color + '22' }}>
       <LucideIcon size={22} style={{ color }} />

@@ -2,8 +2,10 @@ import React from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
+const toIconName = (s) => s?.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^(.)/, (_, c) => c.toUpperCase());
+
 function CategoryIcon({ icon, color }) {
-  const LucideIcon = Icons[icon?.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] || Icons.Tag;
+  const LucideIcon = Icons[toIconName(icon)] || Icons.Tag;
   return (
     <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color + '22' }}>
       <LucideIcon size={15} style={{ color }} />
