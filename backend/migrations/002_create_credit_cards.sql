@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS credit_cards (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  bank VARCHAR(100),
+  color VARCHAR(7) DEFAULT '#FF6B00',
+  closing_day INT NOT NULL,
+  due_day INT NOT NULL,
+  credit_limit DECIMAL(15,2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS accounts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  type ENUM('debit', 'cash', 'pix') NOT NULL,
+  balance DECIMAL(15,2) DEFAULT 0,
+  color VARCHAR(7) DEFAULT '#6366F1',
+  icon VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
