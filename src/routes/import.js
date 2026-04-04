@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -179,12 +180,25 @@ router.post('/save', async (req, res, next) => {
     const { transactions } = req.body;
     if (!transactions?.length) return res.status(400).json({ error: 'Nenhuma transação para salvar' });
 
+    // Gera group_id para transações parceladas do mesmo grupo (mesma descrição + total)
+    const groupMap = {};
+    for (const t of transactions) {
+      if (t._installmentInfo) {
+        const key = `${t.description}|${t._installmentInfo.total}`;
+        if (!groupMap[key]) groupMap[key] = uuidv4();
+      }
+    }
+
     let saved = 0;
     for (const t of transactions) {
+      const info = t._installmentInfo;
+      const groupId = info ? groupMap[`${t.description}|${info.total}`] : null;
+
       await db.query(
-        `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, user_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [t.description, t.amount, t.date, t.type, t.account_id || null, t.credit_card_id || null, t.category_id || null, t.status || 'paid', req.user?.id || null]
+        `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, user_id, installment_total, installment_current, installment_group_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [t.description, t.amount, t.date, t.type, t.account_id || null, t.credit_card_id || null, t.category_id || null, t.status || 'paid', req.user?.id || null,
+         info ? info.total : null, info ? info.current : null, groupId]
       );
 
       if ((t.status === 'paid' || !t.status) && t.account_id) {

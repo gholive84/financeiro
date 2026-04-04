@@ -149,15 +149,44 @@ export default function ImportPage() {
 
           {error && <p className="text-sm text-red-500 flex items-center gap-1"><AlertCircle size={14} /> {error}</p>}
 
+          {/* Categorização em lote */}
+          {selected.length > 1 && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-blue-700">Categorizar {selected.length} selecionadas:</span>
+              <select className="border border-blue-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none bg-white flex-1 min-w-0"
+                onChange={e => {
+                  if (!e.target.value) return;
+                  const [id, type] = e.target.value.split('|');
+                  setTransactions(ts => ts.map(t => selected.includes(t._id) && t.type === type ? { ...t, category_id: id } : t));
+                  e.target.value = '';
+                }}>
+                <option value="">Aplicar categoria a todas despesas/receitas selecionadas...</option>
+                <optgroup label="Despesas">
+                  {categories.filter(c => c.type === 'expense').map(c => <option key={c.id} value={`${c.id}|expense`}>{c.name}</option>)}
+                </optgroup>
+                <optgroup label="Receitas">
+                  {categories.filter(c => c.type === 'income').map(c => <option key={c.id} value={`${c.id}|income`}>{c.name}</option>)}
+                </optgroup>
+              </select>
+            </div>
+          )}
+
           {/* Lista */}
           <div className="space-y-2">
             {transactions.map(t => (
               <div key={t._id} className={`bg-white rounded-xl border px-4 py-3 flex items-start gap-3 transition-all ${selected.includes(t._id) ? 'border-slate-100' : 'border-slate-100 opacity-50'}`}>
                 <input type="checkbox" checked={selected.includes(t._id)} onChange={() => toggleSelect(t._id)} className="mt-1 cursor-pointer" />
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <input
-                    className="border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 sm:col-span-1"
-                    value={t.description} onChange={e => updateTransaction(t._id, 'description', e.target.value)} />
+                  <div className="flex items-center gap-1.5 sm:col-span-1">
+                    <input
+                      className="border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
+                      value={t.description} onChange={e => updateTransaction(t._id, 'description', e.target.value)} />
+                    {t._installmentInfo && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-500 font-semibold flex-shrink-0 whitespace-nowrap">
+                        {t._installmentInfo.current}/{t._installmentInfo.total}x
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <select className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none flex-1"
                       value={t.type} onChange={e => updateTransaction(t._id, 'type', e.target.value)}>
