@@ -74,7 +74,8 @@ Regras:
 - Valores sempre positivos
 - Se não conseguir extrair um valor claro, retorne amount: 0
 - Se mencionou parcelas (ex: "3x", "6 vezes", "parcelado em 12x"), preencha installments com o número. Caso contrário, installments: 1
-- installments só vale quando credit_card_id não for null`;
+- installments só vale quando credit_card_id não for null
+- status: se a data for hoje ou anterior → "paid". Se for data futura → "pending"`;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-4o-mini',
@@ -144,7 +145,8 @@ Regras:
 - Se não mencionou data, use hoje (${today})
 - Valores sempre positivos
 - Se mencionou parcelas (ex: "3x", "6 vezes", "parcelado em 12x"), preencha installments com o número. Caso contrário, installments: 1
-- installments só vale quando credit_card_id não for null`;
+- installments só vale quando credit_card_id não for null
+- status: se a data for hoje ou anterior → "paid". Se for data futura → "pending"`;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-4o-mini',

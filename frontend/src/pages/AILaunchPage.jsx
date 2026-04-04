@@ -32,7 +32,12 @@ export default function AILaunchPage() {
   }, [step]);
 
   const reset = () => { setStep(STEPS.idle); setTransaction(null); setTranscript(''); setError(''); setTextInput(''); };
-  const set = (k, v) => setTransaction(t => ({ ...t, [k]: v }));
+  const todayStr = () => new Date().toISOString().split('T')[0];
+  const set = (k, v) => setTransaction(t => {
+    const updated = { ...t, [k]: v };
+    if (k === 'date') updated.status = v <= todayStr() ? 'paid' : 'pending';
+    return updated;
+  });
 
   // --- VOZ ---
   const startRecording = async () => {

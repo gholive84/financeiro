@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import api from '../../services/api';
 
 const today = () => new Date().toISOString().split('T')[0];
+const statusForDate = (date) => date <= today() ? 'paid' : 'pending';
 
 const empty = {
   description: '', amount: '', date: today(), type: 'expense',
@@ -19,7 +20,11 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
     loadCategories(); loadAccounts(); loadCreditCards();
   }, []);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm(f => {
+    const updated = { ...f, [k]: v };
+    if (k === 'date') updated.status = statusForDate(v);
+    return updated;
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
