@@ -43,7 +43,7 @@ export default function CalendarPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="font-semibold text-slate-800">
-                  {new Date(selectedDay.key + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {new Date(selectedDay.key + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </p>
                 <div className="flex gap-3 mt-1">
                   {selectedDay.total_income > 0 && (

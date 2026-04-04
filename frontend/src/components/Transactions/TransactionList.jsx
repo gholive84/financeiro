@@ -26,7 +26,7 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
             <p className="text-sm font-medium text-slate-800 truncate">{t.description}</p>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-xs text-slate-400">
-                {new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                {String(t.date).split('T')[0].split('-').reverse().join('/')}
               </span>
               {t.category && (
                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>

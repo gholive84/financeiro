@@ -2,14 +2,16 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, ArrowLeftRight, CreditCard,
-  PieChart, PiggyBank, X,
+  PieChart, PiggyBank, Wallet, Tag, X,
 } from 'lucide-react';
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/calendar', icon: Calendar, label: 'Calendário' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
+  { to: '/accounts', icon: Wallet, label: 'Contas' },
   { to: '/credit-cards', icon: CreditCard, label: 'Cartões' },
+  { to: '/categories', icon: Tag, label: 'Categorias' },
   { to: '/budget', icon: PieChart, label: 'Orçamento' },
   { to: '/savings', icon: PiggyBank, label: 'Caixinhas' },
 ];

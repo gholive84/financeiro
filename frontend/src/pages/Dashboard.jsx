@@ -143,7 +143,7 @@ export default function Dashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-700 truncate">{t.description}</p>
                   <p className="text-xs text-slate-400">
-                    {new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    {String(t.date).split('T')[0].split('-').reverse().join('/')}
                     {t.category_name && ` · ${t.category_name}`}
                   </p>
                 </div>
