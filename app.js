@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const errorHandler = require('./src/middleware/errorHandler');
 const { auth } = require('./src/middleware/auth');
+const { startScheduler } = require('./src/scheduler');
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Financeiro rodando na porta ${PORT}`);
+  startScheduler();
 });
 
 module.exports = app;
