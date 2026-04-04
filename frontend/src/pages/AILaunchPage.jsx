@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Loader2, CheckCircle, Edit3, Send } from 'lucide-react';
+import { Mic, MicOff, Loader2, CheckCircle, Send, Type } from 'lucide-react';
 import api from '../services/api';
 import { useApp } from '../context/AppContext';
 
 const STEPS = { idle: 'idle', recording: 'recording', processing: 'processing', review: 'review', saving: 'saving', done: 'done' };
 
-const typeLabels = { income: 'Receita', expense: 'Despesa' };
-
 export default function AILaunchPage() {
   const [step, setStep] = useState(STEPS.idle);
+  const [mode, setMode] = useState('voice');
+  const [textInput, setTextInput] = useState('');
   const [transcript, setTranscript] = useState('');
   const [transaction, setTransaction] = useState(null);
   const [error, setError] = useState('');
@@ -19,9 +19,7 @@ export default function AILaunchPage() {
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
 
-  useEffect(() => {
-    loadCategories(); loadAccounts(); loadCreditCards();
-  }, []);
+  useEffect(() => { loadCategories(); loadAccounts(); loadCreditCards(); }, []);
 
   useEffect(() => {
     if (step === STEPS.recording) {
@@ -33,10 +31,12 @@ export default function AILaunchPage() {
     return () => clearInterval(timerRef.current);
   }, [step]);
 
+  const reset = () => { setStep(STEPS.idle); setTransaction(null); setTranscript(''); setError(''); setTextInput(''); };
+  const set = (k, v) => setTransaction(t => ({ ...t, [k]: v }));
+
+  // --- VOZ ---
   const startRecording = async () => {
-    setError('');
-    setTranscript('');
-    setTransaction(null);
+    setError(''); setTransaction(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -63,18 +63,32 @@ export default function AILaunchPage() {
       const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
       const formData = new FormData();
       formData.append('audio', blob, 'audio.webm');
-      const { data } = await api.post('/ai/transcribe', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const { data } = await api.post('/ai/transcribe', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setTranscript(data.transcript);
       setTransaction(data.transaction);
       setStep(STEPS.review);
-    } catch (err) {
+    } catch {
       setError('Erro ao processar o áudio. Tente novamente.');
       setStep(STEPS.idle);
     }
   };
 
+  // --- TEXTO ---
+  const processText = async () => {
+    if (!textInput.trim()) return;
+    setError(''); setStep(STEPS.processing);
+    try {
+      const { data } = await api.post('/ai/text', { text: textInput });
+      setTranscript(textInput);
+      setTransaction(data.transaction);
+      setStep(STEPS.review);
+    } catch {
+      setError('Erro ao processar. Tente novamente.');
+      setStep(STEPS.idle);
+    }
+  };
+
+  // --- SALVAR ---
   const saveTransaction = async () => {
     setStep(STEPS.saving);
     try {
@@ -91,32 +105,44 @@ export default function AILaunchPage() {
     }
   };
 
-  const reset = () => { setStep(STEPS.idle); setTranscript(''); setTransaction(null); setError(''); };
-
-  const set = (k, v) => setTransaction(t => ({ ...t, [k]: v }));
-
   const formatTime = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  const categoryName = categories.find(c => c.id === parseInt(transaction?.category_id))?.name;
-  const accountName = accounts.find(a => a.id === parseInt(transaction?.account_id))?.name;
-  const cardName = creditCards.find(c => c.id === parseInt(transaction?.credit_card_id))?.name;
+  const examples = [
+    'Gastei 45 reais no almoço hoje no cartão Itaú',
+    'Paguei 1200 de aluguel ontem em dinheiro',
+    'Recebi 3500 de salário hoje na conta Nubank',
+    'Comprei remédio por 89 reais no débito',
+  ];
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Lançar com IA</h1>
-        <p className="text-slate-400 text-sm mt-1">Fale o lançamento e a IA preenche tudo automaticamente.</p>
+        <p className="text-slate-400 text-sm mt-1">Fale ou escreva — a IA interpreta e você confirma.</p>
       </div>
 
-      {/* IDLE */}
+      {/* Toggle modo */}
       {step === STEPS.idle && (
+        <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white">
+          {[['voice', Mic, 'Voz'], ['text', Type, 'Texto']].map(([m, Icon, label]) => (
+            <button key={m} onClick={() => setMode(m)}
+              className={`flex-1 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition-colors
+                ${mode === m ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <Icon size={15} /> {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* IDLE — VOZ */}
+      {step === STEPS.idle && mode === 'voice' && (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center gap-6">
           <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center">
             <Mic size={40} className="text-blue-600" />
           </div>
           <div className="text-center">
             <p className="font-semibold text-slate-800 mb-1">Pressione para gravar</p>
-            <p className="text-sm text-slate-400">Ex: "Gastei 45 reais no almoço hoje no cartão Itaú"</p>
+            <p className="text-sm text-slate-400">Ex: "Gastei 45 reais no almoço hoje"</p>
           </div>
           <button onClick={startRecording}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-4 font-semibold text-base transition-colors flex items-center justify-center gap-2">
@@ -126,7 +152,22 @@ export default function AILaunchPage() {
         </div>
       )}
 
-      {/* RECORDING */}
+      {/* IDLE — TEXTO */}
+      {step === STEPS.idle && mode === 'text' && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-4">
+          <textarea rows={3} placeholder='Ex: "Gastei 45 reais no almoço hoje no cartão Itaú"'
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            value={textInput} onChange={e => setTextInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); processText(); } }} />
+          <button onClick={processText} disabled={!textInput.trim()}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-2xl py-3 font-semibold text-sm transition-colors flex items-center justify-center gap-2">
+            <Send size={16} /> Interpretar
+          </button>
+          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+        </div>
+      )}
+
+      {/* GRAVANDO */}
       {step === STEPS.recording && (
         <div className="bg-white rounded-2xl border border-red-100 p-8 flex flex-col items-center gap-6">
           <div className="relative">
@@ -141,65 +182,59 @@ export default function AILaunchPage() {
           </div>
           <button onClick={stopRecording}
             className="w-full bg-red-500 hover:bg-red-600 text-white rounded-2xl py-4 font-semibold text-base transition-colors flex items-center justify-center gap-2">
-            <MicOff size={20} /> Parar e Processar
+            <MicOff size={20} /> Parar
           </button>
         </div>
       )}
 
-      {/* PROCESSING */}
+      {/* PROCESSANDO */}
       {step === STEPS.processing && (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center gap-4">
           <Loader2 size={48} className="text-blue-600 animate-spin" />
           <p className="font-semibold text-slate-700">Processando com IA...</p>
-          <p className="text-sm text-slate-400">Transcrevendo áudio e interpretando o lançamento</p>
+          <p className="text-sm text-slate-400">Interpretando o lançamento</p>
         </div>
       )}
 
-      {/* REVIEW */}
+      {/* REVISÃO */}
       {step === STEPS.review && transaction && (
         <div className="space-y-4">
-          {/* Transcrição */}
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-wide">Você disse</p>
             <p className="text-sm text-slate-700 italic">"{transcript}"</p>
-            {transaction.confidence && (
-              <p className="text-xs text-blue-500 mt-2">✦ {transaction.confidence}</p>
-            )}
+            {transaction.confidence && <p className="text-xs text-blue-500 mt-2">✦ {transaction.confidence}</p>}
           </div>
 
-          {/* Formulário de revisão */}
           <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Edit3 size={16} className="text-slate-400" />
-              <p className="font-semibold text-slate-800 text-sm">Revise e confirme</p>
-            </div>
+            <p className="font-semibold text-slate-800 text-sm">Revise e confirme</p>
 
-            {/* Tipo */}
             <div className="flex rounded-xl overflow-hidden border border-slate-200">
               {['expense', 'income'].map(t => (
-                <button type="button" key={t}
+                <button type="button" key={t} onClick={() => set('type', t)}
                   className={`flex-1 py-2 text-sm font-semibold transition-colors
                     ${transaction.type === t
                       ? t === 'expense' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-                      : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-                  onClick={() => set('type', t)}>
+                      : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
                   {t === 'expense' ? 'Despesa' : 'Receita'}
                 </button>
               ))}
             </div>
 
-            <input placeholder="Descrição" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <input placeholder="Descrição"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={transaction.description || ''} onChange={e => set('description', e.target.value)} />
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-slate-400 mb-1 block">Valor (R$)</label>
-                <input type="number" step="0.01" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <input type="number" step="0.01"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={transaction.amount || ''} onChange={e => set('amount', parseFloat(e.target.value))} />
               </div>
               <div>
                 <label className="text-xs text-slate-400 mb-1 block">Data</label>
-                <input type="date" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <input type="date"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={transaction.date || ''} onChange={e => set('date', e.target.value)} />
               </div>
             </div>
@@ -214,14 +249,14 @@ export default function AILaunchPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <select className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={transaction.account_id || ''} onChange={e => { set('account_id', e.target.value || null); if (e.target.value) set('credit_card_id', null); }}
-                disabled={!!transaction.credit_card_id}>
+                value={transaction.account_id || ''} disabled={!!transaction.credit_card_id}
+                onChange={e => { set('account_id', e.target.value || null); if (e.target.value) set('credit_card_id', null); }}>
                 <option value="">Conta</option>
                 {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
               <select className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={transaction.credit_card_id || ''} onChange={e => { set('credit_card_id', e.target.value || null); if (e.target.value) set('account_id', null); }}
-                disabled={!!transaction.account_id}>
+                value={transaction.credit_card_id || ''} disabled={!!transaction.account_id}
+                onChange={e => { set('credit_card_id', e.target.value || null); if (e.target.value) set('account_id', null); }}>
                 <option value="">Cartão</option>
                 {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -237,7 +272,8 @@ export default function AILaunchPage() {
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
           <div className="flex gap-3">
-            <button onClick={reset} className="flex-1 border border-slate-200 rounded-2xl py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+            <button onClick={reset}
+              className="flex-1 border border-slate-200 rounded-2xl py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
               Cancelar
             </button>
             <button onClick={saveTransaction}
@@ -248,7 +284,7 @@ export default function AILaunchPage() {
         </div>
       )}
 
-      {/* SAVING */}
+      {/* SALVANDO */}
       {step === STEPS.saving && (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center gap-4">
           <Loader2 size={48} className="text-blue-600 animate-spin" />
@@ -256,7 +292,7 @@ export default function AILaunchPage() {
         </div>
       )}
 
-      {/* DONE */}
+      {/* CONCLUÍDO */}
       {step === STEPS.done && (
         <div className="bg-white rounded-2xl border border-green-100 p-8 flex flex-col items-center gap-6">
           <CheckCircle size={56} className="text-green-500" />
@@ -271,18 +307,16 @@ export default function AILaunchPage() {
         </div>
       )}
 
-      {/* Exemplos */}
+      {/* Exemplos clicáveis */}
       {step === STEPS.idle && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Exemplos de fala</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Exemplos</p>
           <div className="space-y-2">
-            {[
-              'Gastei 45 reais no almoço hoje no cartão Itaú',
-              'Paguei 1200 de aluguel ontem em dinheiro',
-              'Recebi 3500 de salário hoje na conta Nubank',
-              'Comprei remédio por 89 reais no débito',
-            ].map((ex, i) => (
-              <p key={i} className="text-sm text-slate-500 bg-slate-50 rounded-xl px-3 py-2">"{ex}"</p>
+            {examples.map((ex, i) => (
+              <button key={i} onClick={() => { setMode('text'); setTextInput(ex); }}
+                className="w-full text-left text-sm text-slate-500 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 rounded-xl px-3 py-2 transition-colors">
+                "{ex}"
+              </button>
             ))}
           </div>
         </div>
