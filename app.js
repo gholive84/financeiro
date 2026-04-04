@@ -17,6 +17,7 @@ app.use('/api/categories', require('./src/routes/categories'));
 app.use('/api/transactions', require('./src/routes/transactions'));
 app.use('/api/budgets', require('./src/routes/budgets'));
 app.use('/api/savings', require('./src/routes/savings'));
+app.use('/api/ai', require('./src/routes/ai'));
 
 // Serve frontend build in production
 const publicDir = path.join(__dirname, 'public');

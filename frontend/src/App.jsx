@@ -9,6 +9,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import AccountsPage from './pages/AccountsPage';
 import CreditCardsPage from './pages/CreditCardsPage';
 import CategoriesPage from './pages/CategoriesPage';
+import AILaunchPage from './pages/AILaunchPage';
 import BudgetPage from './pages/BudgetPage';
 import SavingsPage from './pages/SavingsPage';
 
@@ -37,6 +38,7 @@ export default function App() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/calendar" element={<CalendarPage />} />
                   <Route path="/transactions" element={<TransactionsPage />} />
+                  <Route path="/ai" element={<AILaunchPage />} />
                   <Route path="/accounts" element={<AccountsPage />} />
                   <Route path="/credit-cards" element={<CreditCardsPage />} />
                   <Route path="/categories" element={<CategoriesPage />} />

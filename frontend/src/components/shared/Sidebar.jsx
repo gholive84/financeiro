@@ -2,11 +2,12 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, ArrowLeftRight, CreditCard,
-  PieChart, PiggyBank, Wallet, Tag, X,
+  PieChart, PiggyBank, Wallet, Tag, Sparkles, X,
 } from 'lucide-react';
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/ai', icon: Sparkles, label: 'Lançar com IA', highlight: true },
   { to: '/calendar', icon: Calendar, label: 'Calendário' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
   { to: '/accounts', icon: Wallet, label: 'Contas' },
@@ -38,7 +39,7 @@ export default function Sidebar({ open, onClose }) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {nav.map(({ to, icon: Icon, label }) => (
+          {nav.map(({ to, icon: Icon, label, highlight }) => (
             <NavLink
               key={to}
               to={to}
@@ -48,6 +49,8 @@ export default function Sidebar({ open, onClose }) {
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
                 ${isActive
                   ? 'bg-blue-50 text-blue-600'
+                  : highlight
+                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`
               }
