@@ -62,6 +62,7 @@ Retorne SOMENTE um JSON válido com esta estrutura (sem markdown, sem explicaç�
   "category_id": número ou null,
   "account_id": número ou null,
   "credit_card_id": número ou null,
+  "installments": 1,
   "status": "paid" ou "pending",
   "confidence": "descrição breve do que você entendeu"
 }
@@ -71,7 +72,9 @@ Regras:
 - Se não mencionou cartão, tente identificar a conta pelo contexto, senão null
 - Se não mencionou data, use hoje (${today})
 - Valores sempre positivos
-- Se não conseguir extrair um valor claro, retorne amount: 0`;
+- Se não conseguir extrair um valor claro, retorne amount: 0
+- Se mencionou parcelas (ex: "3x", "6 vezes", "parcelado em 12x"), preencha installments com o número. Caso contrário, installments: 1
+- installments só vale quando credit_card_id não for null`;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-4o-mini',
@@ -81,7 +84,8 @@ Regras:
       headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
     });
 
-    const raw = gptRes.data.choices[0].message.content.trim();
+    let raw = gptRes.data.choices[0].message.content.trim();
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
     const transaction = JSON.parse(raw);
 
     // Limpar arquivo temporário
@@ -129,6 +133,7 @@ Retorne SOMENTE um JSON válido com esta estrutura (sem markdown, sem explicaç�
   "category_id": número ou null,
   "account_id": número ou null,
   "credit_card_id": número ou null,
+  "installments": 1,
   "status": "paid" ou "pending",
   "confidence": "descrição breve do que você entendeu"
 }
@@ -137,7 +142,9 @@ Regras:
 - Se mencionou cartão de crédito, preencha credit_card_id e deixe account_id null
 - Se não mencionou cartão, tente identificar a conta pelo contexto, senão null
 - Se não mencionou data, use hoje (${today})
-- Valores sempre positivos`;
+- Valores sempre positivos
+- Se mencionou parcelas (ex: "3x", "6 vezes", "parcelado em 12x"), preencha installments com o número. Caso contrário, installments: 1
+- installments só vale quando credit_card_id não for null`;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-4o-mini',
@@ -147,24 +154,12 @@ Regras:
       headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
     });
 
-    const raw = gptRes.data.choices[0].message.content.trim();
+    let raw = gptRes.data.choices[0].message.content.trim();
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
     const transaction = JSON.parse(raw);
 
-    // Salvar direto
-    const [result] = await db.query(
-      `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [transaction.description, transaction.amount, transaction.date, transaction.type,
-       transaction.account_id || null, transaction.credit_card_id || null,
-       transaction.category_id || null, transaction.status || 'paid']
-    );
-
-    if ((transaction.status === 'paid' || !transaction.status) && transaction.account_id) {
-      const delta = transaction.type === 'income' ? transaction.amount : -transaction.amount;
-      await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [delta, transaction.account_id]);
-    }
-
-    res.json({ transaction, id: result.insertId });
+    // Retorna para o frontend confirmar (não salva direto no /text)
+    res.json({ transaction });
   } catch (err) { next(err); }
 });
 

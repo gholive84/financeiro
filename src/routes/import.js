@@ -58,7 +58,9 @@ Regras:
     headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
   });
 
-  const raw = gptRes.data.choices[0].message.content.trim();
+  let raw = gptRes.data.choices[0].message.content.trim();
+  // Remove markdown code blocks if present
+  raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
   return JSON.parse(raw);
 }
 
@@ -81,8 +83,13 @@ router.post('/preview', upload.single('file'), async (req, res, next) => {
       const data = await pdfParse(buffer);
       text = data.text;
     } else {
-      // CSV ou TXT
-      text = fs.readFileSync(filePath, 'utf8');
+      // CSV ou TXT — tenta UTF-8, fallback para Latin-1 (padrão dos bancos brasileiros)
+      try {
+        text = fs.readFileSync(filePath, 'utf8');
+        if (text.includes('\uFFFD')) throw new Error('not utf8');
+      } catch {
+        text = fs.readFileSync(filePath, 'latin1');
+      }
     }
 
     fs.unlinkSync(filePath);

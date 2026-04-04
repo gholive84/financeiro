@@ -97,6 +97,7 @@ export default function AILaunchPage() {
         account_id: transaction.account_id || null,
         credit_card_id: transaction.credit_card_id || null,
         category_id: transaction.category_id || null,
+        installments: transaction.installments || 1,
       });
       setStep(STEPS.done);
     } catch {
@@ -112,6 +113,7 @@ export default function AILaunchPage() {
     'Paguei 1200 de aluguel ontem em dinheiro',
     'Recebi 3500 de salário hoje na conta Nubank',
     'Comprei remédio por 89 reais no débito',
+    'Comprei TV 1800 reais em 6x no cartão Bradesco',
   ];
 
   return (
@@ -250,7 +252,7 @@ export default function AILaunchPage() {
             <div className="grid grid-cols-2 gap-3">
               <select className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={transaction.account_id || ''} disabled={!!transaction.credit_card_id}
-                onChange={e => { set('account_id', e.target.value || null); if (e.target.value) set('credit_card_id', null); }}>
+                onChange={e => { set('account_id', e.target.value || null); if (e.target.value) { set('credit_card_id', null); set('installments', 1); } }}>
                 <option value="">Conta</option>
                 {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
@@ -261,6 +263,22 @@ export default function AILaunchPage() {
                 {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+
+            {transaction.credit_card_id && (
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Parcelas</label>
+                <select className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={transaction.installments || 1} onChange={e => set('installments', parseInt(e.target.value))}>
+                  <option value={1}>À vista (1x)</option>
+                  {[2,3,4,5,6,7,8,9,10,11,12,18,24].map(n => (
+                    <option key={n} value={n}>{n}x {transaction.amount ? `de R$ ${(parseFloat(transaction.amount) / n).toFixed(2).replace('.', ',')}` : ''}</option>
+                  ))}
+                </select>
+                {(transaction.installments || 1) > 1 && (
+                  <p className="text-xs text-blue-500 mt-1">Serão criadas {transaction.installments} transações mensais.</p>
+                )}
+              </div>
+            )}
 
             <select className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={transaction.status || 'paid'} onChange={e => set('status', e.target.value)}>
