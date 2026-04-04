@@ -6,7 +6,7 @@ import Modal from '../components/shared/Modal';
 
 const iconOptions = [
   // Alimentação
-  'utensils','coffee','pizza','wine','beer','sandwich','salad','cake','ice-cream','chef-hat',
+  'utensils','coffee','pizza','wine','beer','sandwich','salad','cake','ice-cream-2','chef-hat',
   // Transporte
   'car','bus','train','plane','bike','fuel','truck','navigation','map-pin','ship',
   // Compras
@@ -18,11 +18,11 @@ const iconOptions = [
   // Lazer
   'gamepad-2','music','film','ticket','camera','palette','mic','headphones','book','book-open',
   // Educação
-  'graduation-cap','pen','pencil','notebook','library','monitor','laptop','code',
+  'graduation-cap','pen','pencil','notebook-pen','library','monitor','laptop','code',
   // Finanças
   'credit-card','dollar-sign','trending-up','trending-down','wallet','piggy-bank','coins','banknote','percent','receipt',
   // Trabalho
-  'briefcase','building','building-2','users','phone','mail','calendar','clock','chart-bar','chart-pie',
+  'briefcase','building','building-2','users','phone','mail','calendar','clock','bar-chart-3','pie-chart',
   // Outros
   'star','sun','moon','zap','leaf','globe','baby','dog','cat','flower-2',
 ];

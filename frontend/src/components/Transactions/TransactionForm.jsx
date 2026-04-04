@@ -13,7 +13,14 @@ const empty = {
 
 export default function TransactionForm({ initial, onSave, onCancel }) {
   const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
-  const [form, setForm] = useState(initial ? { ...initial, amount: String(initial.amount), account_id: initial.account?.id || '', credit_card_id: initial.credit_card?.id || '', category_id: initial.category?.id || '' } : empty);
+  const [form, setForm] = useState(initial ? {
+    ...initial,
+    amount: String(initial.amount),
+    date: String(initial.date).split('T')[0],
+    account_id: initial.account?.id || '',
+    credit_card_id: initial.credit_card?.id || '',
+    category_id: initial.category?.id || '',
+  } : empty);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
