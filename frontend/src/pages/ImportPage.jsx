@@ -13,24 +13,39 @@ export default function ImportPage() {
   const [error, setError] = useState('');
   const [fileName, setFileName] = useState('');
   const [savedCount, setSavedCount] = useState(0);
+  const [pdfPassword, setPdfPassword] = useState('');
+  const [pendingFile, setPendingFile] = useState(null);
   const fileRef = useRef();
   const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
 
   useEffect(() => { loadCategories(); loadAccounts(); loadCreditCards(); }, []);
 
-  const handleFile = async (e) => {
+  const isPDF = (file) => file?.name?.toLowerCase().endsWith('.pdf') || file?.type === 'application/pdf';
+
+  const handleFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setFileName(file.name);
     setError('');
-    setStep(STEPS.processing);
+    setPdfPassword('');
+    if (isPDF(file)) {
+      setPendingFile(file);  // aguarda senha antes de processar
+    } else {
+      setPendingFile(null);
+      submitFile(file, '');
+    }
+  };
 
+  const submitFile = async (file, password) => {
+    setStep(STEPS.processing);
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (password) formData.append('password', password);
       const { data } = await api.post('/import/preview', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setTransactions(data.transactions.map((t, i) => ({ ...t, _id: i })));
       setSelected(data.transactions.map((_, i) => i));
+      setPendingFile(null);
       setStep(STEPS.review);
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Erro ao processar arquivo');
@@ -65,7 +80,7 @@ export default function ImportPage() {
     }
   };
 
-  const reset = () => { setStep(STEPS.idle); setTransactions([]); setSelected([]); setError(''); setFileName(''); if (fileRef.current) fileRef.current.value = ''; };
+  const reset = () => { setStep(STEPS.idle); setTransactions([]); setSelected([]); setError(''); setFileName(''); setPendingFile(null); setPdfPassword(''); if (fileRef.current) fileRef.current.value = ''; };
 
   const totalAmount = transactions.filter(t => selected.includes(t._id))
     .reduce((s, t) => t.type === 'income' ? s + parseFloat(t.amount) : s - parseFloat(t.amount), 0);
@@ -78,7 +93,7 @@ export default function ImportPage() {
       </div>
 
       {/* IDLE */}
-      {step === STEPS.idle && (
+      {step === STEPS.idle && !pendingFile && (
         <div
           className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 flex flex-col items-center gap-4 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
           onClick={() => fileRef.current?.click()}>
@@ -90,6 +105,31 @@ export default function ImportPage() {
           <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full">PDF, CSV, TXT</span>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <input ref={fileRef} type="file" accept=".pdf,.csv,.txt" className="hidden" onChange={handleFile} />
+        </div>
+      )}
+
+      {/* PDF com senha */}
+      {step === STEPS.idle && pendingFile && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center gap-5">
+          <FileText size={40} className="text-blue-400" />
+          <div className="text-center">
+            <p className="font-semibold text-slate-800">{fileName}</p>
+            <p className="text-sm text-slate-400 mt-1">Este PDF é protegido por senha</p>
+          </div>
+          <input
+            type="password" placeholder="Senha do PDF"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={pdfPassword} onChange={e => setPdfPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && submitFile(pendingFile, pdfPassword)}
+            autoFocus />
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex gap-3 w-full">
+            <button onClick={reset} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
+            <button onClick={() => submitFile(pendingFile, pdfPassword)}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
+              Processar PDF
+            </button>
+          </div>
         </div>
       )}
 

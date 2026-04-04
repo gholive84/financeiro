@@ -158,7 +158,9 @@ router.post('/preview', upload.single('file'), async (req, res, next) => {
     let text = '';
     if (isPDF) {
       const pdfParse = require('pdf-parse');
-      const data = await pdfParse(buffer);
+      const pdfOptions = {};
+      if (req.body.password) pdfOptions.password = req.body.password;
+      const data = await pdfParse(buffer, pdfOptions);
       text = data.text;
     } else {
       const utf8 = buffer.toString('utf8');
