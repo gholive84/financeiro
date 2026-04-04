@@ -5,11 +5,26 @@ import api from '../services/api';
 import Modal from '../components/shared/Modal';
 
 const iconOptions = [
-  'tag', 'briefcase', 'laptop', 'trending-up', 'plus-circle',
-  'utensils', 'car', 'home', 'heart', 'book', 'gamepad-2',
-  'shirt', 'shopping-cart', 'credit-card', 'more-horizontal',
-  'music', 'coffee', 'gift', 'plane', 'zap', 'star', 'sun',
-  'moon', 'activity', 'dollar-sign', 'percent', 'truck',
+  // Alimentação
+  'utensils','coffee','pizza','wine','beer','sandwich','salad','cake','ice-cream','chef-hat',
+  // Transporte
+  'car','bus','train','plane','bike','fuel','truck','navigation','map-pin','ship',
+  // Compras
+  'shopping-cart','shopping-bag','tag','gift','package','store','shirt','scissors','gem',
+  // Casa
+  'home','sofa','lamp','tool','wrench','bath','bed','tv','wifi','plug',
+  // Saúde
+  'heart','activity','pill','stethoscope','dumbbell','apple','brain','thermometer','syringe',
+  // Lazer
+  'gamepad-2','music','film','ticket','camera','palette','mic','headphones','book','book-open',
+  // Educação
+  'graduation-cap','pen','pencil','notebook','library','monitor','laptop','code',
+  // Finanças
+  'credit-card','dollar-sign','trending-up','trending-down','wallet','piggy-bank','coins','banknote','percent','receipt',
+  // Trabalho
+  'briefcase','building','building-2','users','phone','mail','calendar','clock','chart-bar','chart-pie',
+  // Outros
+  'star','sun','moon','zap','leaf','globe','baby','dog','cat','flower-2',
 ];
 
 function CatIcon({ icon, color, size = 16 }) {
@@ -19,6 +34,38 @@ function CatIcon({ icon, color, size = 16 }) {
 }
 
 const emptyCategory = { name: '', icon: 'tag', color: '#6366F1', type: 'expense' };
+
+function IconPicker({ value, color, onChange }) {
+  const [search, setSearch] = useState('');
+  const filtered = search
+    ? iconOptions.filter(i => i.includes(search.toLowerCase()))
+    : iconOptions;
+
+  return (
+    <div>
+      <input
+        placeholder="Buscar ícone..."
+        className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2"
+        value={search} onChange={e => setSearch(e.target.value)} />
+      <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
+        {filtered.map(ic => {
+          const name = ic.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+          const Icon = Icons[name] || Icons.Tag;
+          const active = value === ic;
+          return (
+            <button key={ic} type="button" title={ic}
+              onClick={() => onChange(ic)}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all
+                ${active ? 'ring-2 ring-offset-1' : 'hover:bg-slate-100'}`}
+              style={active ? { backgroundColor: color + '22', ringColor: color } : {}}>
+              <Icon size={15} style={{ color: active ? color : '#94a3b8' }} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function CategoryForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial || emptyCategory);
@@ -54,18 +101,17 @@ function CategoryForm({ initial, onSave, onCancel }) {
       <input required placeholder="Nome da categoria" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={form.name} onChange={e => set('name', e.target.value)} />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex items-center gap-3">
         <div>
           <label className="text-xs text-slate-500 mb-1 block">Cor</label>
-          <input type="color" className="w-full h-10 border border-slate-200 rounded-xl px-2 cursor-pointer"
+          <input type="color" className="w-14 h-10 border border-slate-200 rounded-xl px-1 cursor-pointer"
             value={form.color} onChange={e => set('color', e.target.value)} />
         </div>
-        <div>
-          <label className="text-xs text-slate-500 mb-1 block">Ícone</label>
-          <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={form.icon} onChange={e => set('icon', e.target.value)}>
-            {iconOptions.map(ic => <option key={ic} value={ic}>{ic}</option>)}
-          </select>
+        <div className="flex-1 min-w-0">
+          <label className="text-xs text-slate-500 mb-1 block">Ícone selecionado: <span className="font-semibold text-slate-700">{form.icon}</span></label>
+          <div className="border border-slate-200 rounded-xl p-2">
+            <IconPicker value={form.icon} color={form.color} onChange={v => set('icon', v)} />
+          </div>
         </div>
       </div>
 
