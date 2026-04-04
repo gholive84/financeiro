@@ -4,6 +4,7 @@ const db = require('../db');
 
 // GET /api/dashboard
 router.get('/', async (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
   try {
     const now = new Date();
     const month = now.getMonth() + 1;

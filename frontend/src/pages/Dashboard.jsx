@@ -26,7 +26,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     setLoading(true);
-    api.get('/dashboard').then(r => setData(r.data)).finally(() => setLoading(false));
+    setData(null);
+    api.get(`/dashboard?_=${Date.now()}`).then(r => setData(r.data)).finally(() => setLoading(false));
   }, [location.key]);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Carregando...</div>;
