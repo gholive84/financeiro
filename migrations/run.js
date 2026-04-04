@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+require('dotenv').config({ path: path.join(__dirname, '../.env'), override: false });
+// Fallback: também tenta o .env na raiz do projeto
+require('dotenv').config();
 
 async function runMigrations() {
   const connection = await mysql.createConnection({
