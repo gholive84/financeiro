@@ -43,7 +43,7 @@ router.get('/', async (req, res, next) => {
     // Savings boxes
     const [savings] = await db.query('SELECT * FROM savings_boxes ORDER BY created_at DESC');
 
-    // Recent transactions
+    // Recent transactions (current month only)
     const [recentTransactions] = await db.query(`
       SELECT t.*, c.name as category_name, c.icon as category_icon, c.color as category_color,
         a.name as account_name, cc.name as credit_card_name, cc.color as credit_card_color
@@ -51,9 +51,10 @@ router.get('/', async (req, res, next) => {
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN accounts a ON t.account_id = a.id
       LEFT JOIN credit_cards cc ON t.credit_card_id = cc.id
+      WHERE MONTH(t.date) = ? AND YEAR(t.date) = ?
       ORDER BY t.date DESC, t.created_at DESC
       LIMIT 10
-    `);
+    `, [month, year]);
 
     res.json({
       total_balance: parseFloat(total_balance),

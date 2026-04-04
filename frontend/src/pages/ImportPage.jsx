@@ -33,7 +33,7 @@ export default function ImportPage() {
       setSelected(data.transactions.map((_, i) => i));
       setStep(STEPS.review);
     } catch (err) {
-      setError(err.response?.data?.error || 'Erro ao processar arquivo');
+      setError(err.response?.data?.error || err.message || 'Erro ao processar arquivo');
       setStep(STEPS.idle);
     }
   };

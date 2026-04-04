@@ -135,7 +135,7 @@ export default function Dashboard() {
       {data.recent_transactions.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-slate-800">Transações Recentes</h2>
+            <h2 className="font-semibold text-slate-800">Transações do Mês</h2>
             <Link to="/transactions" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
               Ver tudo <ArrowRight size={12} />
             </Link>

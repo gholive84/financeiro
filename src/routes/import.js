@@ -55,12 +55,78 @@ Regras:
     temperature: 0.1,
   }, {
     headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+    timeout: 60000,
   });
 
-  let raw = gptRes.data.choices[0].message.content.trim();
-  // Remove markdown code blocks if present
-  raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
-  return JSON.parse(raw);
+  const raw = gptRes.data.choices[0].message.content.trim();
+  // Extrai o primeiro bloco JSON { ... } da resposta, ignorando markdown
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error(`IA não retornou JSON válido: ${raw.slice(0, 200)}`);
+  return JSON.parse(match[0]);
+}
+
+// Tenta parsear CSV estruturado diretamente (sem GPT), retorna null se não conseguir
+function parseCSVDirect(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return null;
+
+  // Detecta separador
+  const sep = lines[0].includes(';') ? ';' : ',';
+  const headers = lines[0].split(sep).map(h => h.replace(/"/g, '').trim().toLowerCase());
+
+  // Mapeia colunas comuns de extratos brasileiros
+  const colDate = headers.findIndex(h => h.includes('data'));
+  const colDesc = headers.findIndex(h => h.includes('descri') || h.includes('histór') || h.includes('lançamento') || h.includes('estabelecimento'));
+  // Pega a ÚLTIMA coluna com "valor" (geralmente é o valor em R$)
+  let colAmount = -1;
+  for (let i = headers.length - 1; i >= 0; i--) {
+    if (headers[i].includes('valor') || headers[i].includes('r$')) { colAmount = i; break; }
+  }
+  const colParcela = headers.findIndex(h => h.includes('parcela'));
+
+  if (colDate === -1 || colDesc === -1 || colAmount === -1) return null;
+
+  const transactions = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(sep).map(c => c.replace(/"/g, '').trim());
+    if (cols.length <= colAmount) continue;
+
+    const rawAmount = parseFloat(cols[colAmount].replace(',', '.'));
+    if (isNaN(rawAmount) || rawAmount === 0) continue;
+
+    // Ignora linhas de totais/saldos/encargos sem descrição útil
+    const desc = cols[colDesc];
+    if (!desc || /^(total|saldo|encargo|juros|multa|iof|anuidade|inclusao|estorno)/i.test(desc)) continue;
+
+    // Converte data DD/MM/YYYY → YYYY-MM-DD
+    let date = cols[colDate];
+    const dateParts = date.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (dateParts) date = `${dateParts[3]}-${dateParts[2]}-${dateParts[1]}`;
+
+    const today = new Date().toISOString().split('T')[0];
+    const status = date <= today ? 'paid' : 'pending';
+
+    // Parcelas: "2/10" → { current: 2, total: 10 }
+    let installmentInfo = null;
+    if (colParcela !== -1 && cols[colParcela]) {
+      const m = cols[colParcela].match(/(\d+)\/(\d+)/);
+      if (m) installmentInfo = { current: parseInt(m[1]), total: parseInt(m[2]) };
+    }
+
+    transactions.push({
+      description: desc,
+      amount: Math.abs(rawAmount),
+      date,
+      type: rawAmount < 0 ? 'income' : 'expense',
+      category_id: null,
+      account_id: null,
+      credit_card_id: null,
+      status,
+      _installmentInfo: installmentInfo,
+    });
+  }
+
+  return transactions.length > 0 ? transactions : null;
 }
 
 // POST /api/import/preview — analisa arquivo e retorna transações para revisão
@@ -72,16 +138,28 @@ router.post('/preview', upload.single('file'), async (req, res, next) => {
     const [accounts] = await db.query('SELECT id, name FROM accounts');
     const [creditCards] = await db.query('SELECT id, name, bank FROM credit_cards');
 
-    let text = '';
     const mime = req.file.mimetype;
     const buffer = req.file.buffer;
+    const isPDF = mime === 'application/pdf' || req.file.originalname?.endsWith('.pdf');
+    const isCSV = !isPDF && (req.file.originalname?.endsWith('.csv') || mime.includes('csv'));
 
-    if (mime === 'application/pdf' || req.file.originalname?.endsWith('.pdf')) {
+    // Para CSV: tenta parse direto primeiro (sem IA, sem timeout)
+    if (isCSV) {
+      const utf8 = buffer.toString('utf8');
+      const text = utf8.includes('\uFFFD') ? buffer.toString('latin1') : utf8;
+      const parsed = parseCSVDirect(text);
+      if (parsed) {
+        return res.json({ transactions: parsed, total: parsed.length, source: 'csv-parse' });
+      }
+    }
+
+    // Para PDF ou CSV não reconhecido: usa GPT
+    let text = '';
+    if (isPDF) {
       const pdfParse = require('pdf-parse');
       const data = await pdfParse(buffer);
       text = data.text;
     } else {
-      // CSV ou TXT — tenta UTF-8, fallback para Latin-1 (padrão dos bancos brasileiros)
       const utf8 = buffer.toString('utf8');
       text = utf8.includes('\uFFFD') ? buffer.toString('latin1') : utf8;
     }
@@ -89,7 +167,7 @@ router.post('/preview', upload.single('file'), async (req, res, next) => {
     if (!text.trim()) return res.status(400).json({ error: 'Não foi possível extrair texto do arquivo' });
 
     const result = await interpretWithGPT(text, categories, accounts, creditCards);
-    res.json({ transactions: result.transactions, total: result.transactions.length });
+    res.json({ transactions: result.transactions, total: result.transactions.length, source: 'gpt' });
   } catch (err) {
     next(err);
   }
