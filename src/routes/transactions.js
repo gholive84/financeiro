@@ -179,19 +179,31 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /api/transactions/:id
+// DELETE /api/transactions/:id?all=true (deleta todas as parcelas do grupo)
 router.delete('/:id', async (req, res, next) => {
   try {
     const [old] = await db.query('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
     if (!old.length) return res.status(404).json({ error: 'Transação não encontrada' });
     const prev = old[0];
 
-    // Revert balance
-    if (prev.status === 'paid' && prev.account_id) {
-      const revert = prev.type === 'income' ? -prev.amount : parseFloat(prev.amount);
-      await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, prev.account_id]);
+    if (req.query.all === 'true' && prev.installment_group_id) {
+      // Deleta todas as parcelas do grupo
+      const [group] = await db.query('SELECT * FROM transactions WHERE installment_group_id = ?', [prev.installment_group_id]);
+      for (const t of group) {
+        if (t.status === 'paid' && t.account_id) {
+          const revert = t.type === 'income' ? -parseFloat(t.amount) : parseFloat(t.amount);
+          await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, t.account_id]);
+        }
+      }
+      await db.query('DELETE FROM transactions WHERE installment_group_id = ?', [prev.installment_group_id]);
+      return res.json({ message: 'Todas as parcelas deletadas', deleted: group.length });
     }
 
+    // Deleta apenas esta parcela
+    if (prev.status === 'paid' && prev.account_id) {
+      const revert = prev.type === 'income' ? -parseFloat(prev.amount) : parseFloat(prev.amount);
+      await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, prev.account_id]);
+    }
     await db.query('DELETE FROM transactions WHERE id = ?', [req.params.id]);
     res.json({ message: 'Transação deletada' });
   } catch (err) { next(err); }

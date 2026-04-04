@@ -9,7 +9,7 @@ router.get('/', async (req, res, next) => {
     let sql = 'SELECT * FROM categories';
     const params = [];
     if (type) { sql += ' WHERE type = ?'; params.push(type); }
-    sql += ' ORDER BY name';
+    sql += ' ORDER BY COALESCE(parent_id, id), parent_id IS NOT NULL, name';
     const [rows] = await db.query(sql, params);
     res.json(rows);
   } catch (err) { next(err); }
@@ -18,10 +18,10 @@ router.get('/', async (req, res, next) => {
 // POST /api/categories
 router.post('/', async (req, res, next) => {
   try {
-    const { name, icon, color = '#6366F1', type } = req.body;
+    const { name, icon, color = '#6366F1', type, parent_id } = req.body;
     const [result] = await db.query(
-      'INSERT INTO categories (name, icon, color, type) VALUES (?, ?, ?, ?)',
-      [name, icon, color, type]
+      'INSERT INTO categories (name, icon, color, type, parent_id) VALUES (?, ?, ?, ?, ?)',
+      [name, icon, color, type, parent_id || null]
     );
     const [rows] = await db.query('SELECT * FROM categories WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
@@ -31,10 +31,10 @@ router.post('/', async (req, res, next) => {
 // PUT /api/categories/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const { name, icon, color, type } = req.body;
+    const { name, icon, color, type, parent_id } = req.body;
     await db.query(
-      'UPDATE categories SET name=?, icon=?, color=?, type=? WHERE id=?',
-      [name, icon, color, type, req.params.id]
+      'UPDATE categories SET name=?, icon=?, color=?, type=?, parent_id=? WHERE id=?',
+      [name, icon, color, type, parent_id || null, req.params.id]
     );
     const [rows] = await db.query('SELECT * FROM categories WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Categoria não encontrada' });
@@ -45,6 +45,8 @@ router.put('/:id', async (req, res, next) => {
 // DELETE /api/categories/:id
 router.delete('/:id', async (req, res, next) => {
   try {
+    // Remove parent_id das subcategorias antes de deletar
+    await db.query('UPDATE categories SET parent_id = NULL WHERE parent_id = ?', [req.params.id]);
     const [result] = await db.query('DELETE FROM categories WHERE id = ?', [req.params.id]);
     if (!result.affectedRows) return res.status(404).json({ error: 'Categoria não encontrada' });
     res.json({ message: 'Categoria deletada' });

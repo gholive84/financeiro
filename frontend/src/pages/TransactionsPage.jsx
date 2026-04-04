@@ -31,8 +31,19 @@ export default function TransactionsPage() {
   const handleSave = () => { setModal(false); setEditing(null); load(); };
   const handleEdit = (t) => { setEditing(t); setModal(true); };
   const handleDelete = async (id) => {
-    if (!confirm('Deletar esta transação?')) return;
-    await api.delete(`/transactions/${id}`);
+    const t = transactions.find(t => t.id === id);
+    const isInstallment = t?.installment_total > 1 && t?.installment_group_id;
+
+    if (isInstallment) {
+      const deleteAll = window.confirm(
+        `Parcela ${t.installment_current}/${t.installment_total} — "${t.description}"\n\nOK = Excluir TODAS as ${t.installment_total} parcelas\nCancelar = Excluir só esta parcela`
+      );
+      // deleteAll = true → todas | false → só esta (ambos confirmam a exclusão)
+      await api.delete(`/transactions/${id}${deleteAll ? '?all=true' : ''}`);
+    } else {
+      if (!confirm('Deletar esta transação?')) return;
+      await api.delete(`/transactions/${id}`);
+    }
     load();
   };
 

@@ -58,6 +58,8 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
   };
 
   const filteredCategories = categories.filter(c => c.type === form.type);
+  const parentCategories = filteredCategories.filter(c => !c.parent_id);
+  const childCategories = filteredCategories.filter(c => c.parent_id);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -101,7 +103,20 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         value={form.category_id} onChange={e => set('category_id', e.target.value)}
       >
         <option value="">Categoria (opcional)</option>
-        {filteredCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        {parentCategories.map(parent => {
+          const subs = childCategories.filter(c => String(c.parent_id) === String(parent.id));
+          return subs.length > 0 ? (
+            <optgroup key={parent.id} label={parent.name}>
+              <option value={parent.id}>{parent.name} (geral)</option>
+              {subs.map(c => <option key={c.id} value={c.id}>↳ {c.name}</option>)}
+            </optgroup>
+          ) : (
+            <option key={parent.id} value={parent.id}>{parent.name}</option>
+          );
+        })}
+        {childCategories.filter(c => !parentCategories.find(p => p.id === c.parent_id)).map(c => (
+          <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
       </select>
 
       {/* Pagamento */}
