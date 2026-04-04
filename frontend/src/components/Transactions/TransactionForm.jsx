@@ -7,7 +7,7 @@ const today = () => new Date().toISOString().split('T')[0];
 const empty = {
   description: '', amount: '', date: today(), type: 'expense',
   account_id: '', credit_card_id: '', category_id: '',
-  status: 'paid', notes: '', is_recurring: false,
+  status: 'paid', notes: '', is_recurring: false, installments: 1,
 };
 
 export default function TransactionForm({ initial, onSave, onCancel }) {
@@ -96,7 +96,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
       <div className="grid grid-cols-2 gap-3">
         <select
           className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={form.account_id} onChange={e => { set('account_id', e.target.value); if (e.target.value) set('credit_card_id', ''); }}
+          value={form.account_id} onChange={e => { set('account_id', e.target.value); if (e.target.value) { set('credit_card_id', ''); set('installments', 1); } }}
           disabled={!!form.credit_card_id}
         >
           <option value="">Conta</option>
@@ -111,6 +111,26 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
           {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
+
+      {/* Parcelas — só aparece com cartão de crédito */}
+      {form.credit_card_id && !initial?.id && (
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Parcelas</label>
+          <select
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={form.installments} onChange={e => set('installments', parseInt(e.target.value))}>
+            <option value={1}>À vista (1x)</option>
+            {[2,3,4,5,6,7,8,9,10,11,12,18,24].map(n => (
+              <option key={n} value={n}>{n}x {form.amount ? `de R$ ${(parseFloat(form.amount) / n).toFixed(2).replace('.', ',')}` : ''}</option>
+            ))}
+          </select>
+          {form.installments > 1 && (
+            <p className="text-xs text-blue-500 mt-1">
+              Serão criadas {form.installments} transações mensais automaticamente.
+            </p>
+          )}
+        </div>
+      )}
 
       <select
         className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

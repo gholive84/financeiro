@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, ArrowLeftRight, CreditCard,
-  PieChart, PiggyBank, Wallet, Tag, Sparkles, Users, LogOut, X, Shield, User,
+  PieChart, PiggyBank, Wallet, Tag, Sparkles, Users, LogOut, X, Shield, User, Upload,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,6 +16,7 @@ const nav = [
   { to: '/categories', icon: Tag, label: 'Categorias' },
   { to: '/budget', icon: PieChart, label: 'Orçamento' },
   { to: '/savings', icon: PiggyBank, label: 'Caixinhas' },
+  { to: '/import', icon: Upload, label: 'Importar' },
 ];
 
 export default function Sidebar({ open, onClose }) {

@@ -15,6 +15,7 @@ import BudgetPage from './pages/BudgetPage';
 import SavingsPage from './pages/SavingsPage';
 import AILaunchPage from './pages/AILaunchPage';
 import UsersPage from './pages/UsersPage';
+import ImportPage from './pages/ImportPage';
 
 function AppLayout() {
   const { user, loading } = useAuth();
@@ -54,6 +55,7 @@ function AppLayout() {
                 <Route path="/budget" element={<BudgetPage />} />
                 <Route path="/savings" element={<SavingsPage />} />
                 <Route path="/users" element={<UsersPage />} />
+                <Route path="/import" element={<ImportPage />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </div>

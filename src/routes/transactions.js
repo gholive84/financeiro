@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { v4: uuidv4 } = require('uuid');
 
 const transactionSelect = `
   SELECT
@@ -46,6 +47,9 @@ function formatTransaction(row) {
       bank: row.credit_card_bank,
     } : null,
     user: row.user_id ? { id: row.user_id, username: row.user_username, name: row.user_name } : null,
+    installment_total: row.installment_total || null,
+    installment_current: row.installment_current || null,
+    installment_group_id: row.installment_group_id || null,
   };
 }
 
@@ -99,15 +103,41 @@ router.get('/calendar/:year/:month', async (req, res, next) => {
 // POST /api/transactions
 router.post('/', async (req, res, next) => {
   try {
-    const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes } = req.body;
+    const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes, installments } = req.body;
 
+    const numInstallments = parseInt(installments) || 1;
+
+    // Parcelado: cria N transações
+    if (numInstallments > 1 && credit_card_id) {
+      const groupId = uuidv4();
+      const installmentAmount = parseFloat((amount / numInstallments).toFixed(2));
+      const [baseDate] = date.split('T');
+      const [y, m, d] = baseDate.split('-').map(Number);
+      const insertedIds = [];
+
+      for (let i = 0; i < numInstallments; i++) {
+        const installDate = new Date(y, m - 1 + i, d);
+        const installDateStr = installDate.toISOString().split('T')[0];
+        const desc = `${description} (${i + 1}/${numInstallments})`;
+        const [result] = await db.query(
+          `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, installment_total, installment_current, installment_group_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [desc, installmentAmount, installDateStr, type, null, credit_card_id, category_id || null, 'pending', notes || null, req.user?.id || null, numInstallments, i + 1, groupId]
+        );
+        insertedIds.push(result.insertId);
+      }
+
+      const [rows] = await db.query(transactionSelect + ' WHERE t.id = ?', [insertedIds[0]]);
+      return res.status(201).json(formatTransaction(rows[0]));
+    }
+
+    // Transação simples
     const [result] = await db.query(
       `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes, user_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, recurring_template_id || null, status || 'paid', notes || null, req.user?.id || null]
     );
 
-    // Update account balance if paid and has account
     if ((status === 'paid' || !status) && account_id) {
       const delta = type === 'income' ? amount : -amount;
       await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [delta, account_id]);
