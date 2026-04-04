@@ -7,11 +7,13 @@ const transactionSelect = `
     t.*,
     c.name as category_name, c.icon as category_icon, c.color as category_color,
     a.name as account_name, a.type as account_type, a.color as account_color,
-    cc.name as credit_card_name, cc.color as credit_card_color, cc.bank as credit_card_bank
+    cc.name as credit_card_name, cc.color as credit_card_color, cc.bank as credit_card_bank,
+    u.username as user_username, u.name as user_name
   FROM transactions t
   LEFT JOIN categories c ON t.category_id = c.id
   LEFT JOIN accounts a ON t.account_id = a.id
   LEFT JOIN credit_cards cc ON t.credit_card_id = cc.id
+  LEFT JOIN users u ON t.user_id = u.id
 `;
 
 function formatTransaction(row) {
@@ -43,6 +45,7 @@ function formatTransaction(row) {
       color: row.credit_card_color,
       bank: row.credit_card_bank,
     } : null,
+    user: row.user_id ? { id: row.user_id, username: row.user_username, name: row.user_name } : null,
   };
 }
 
@@ -99,9 +102,9 @@ router.post('/', async (req, res, next) => {
     const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes } = req.body;
 
     const [result] = await db.query(
-      `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, recurring_template_id || null, status || 'paid', notes || null]
+      `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes, user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, recurring_template_id || null, status || 'paid', notes || null, req.user?.id || null]
     );
 
     // Update account balance if paid and has account

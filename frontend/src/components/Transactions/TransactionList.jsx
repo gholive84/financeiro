@@ -41,6 +41,9 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
               {t.status === 'pending' && (
                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">Pendente</span>
               )}
+              {t.user && (
+                <span className="text-xs text-slate-300">@{t.user.username}</span>
+              )}
             </div>
           </div>
 

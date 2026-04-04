@@ -3,21 +3,25 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const errorHandler = require('./src/middleware/errorHandler');
+const { auth } = require('./src/middleware/auth');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// API Routes
-app.use('/api/dashboard', require('./src/routes/dashboard'));
-app.use('/api/accounts', require('./src/routes/accounts'));
-app.use('/api/credit-cards', require('./src/routes/creditCards'));
-app.use('/api/categories', require('./src/routes/categories'));
-app.use('/api/transactions', require('./src/routes/transactions'));
-app.use('/api/budgets', require('./src/routes/budgets'));
-app.use('/api/savings', require('./src/routes/savings'));
-app.use('/api/ai', require('./src/routes/ai'));
+// Public routes
+app.use('/api/auth', require('./src/routes/auth'));
+
+// Protected routes
+app.use('/api/dashboard', auth, require('./src/routes/dashboard'));
+app.use('/api/accounts', auth, require('./src/routes/accounts'));
+app.use('/api/credit-cards', auth, require('./src/routes/creditCards'));
+app.use('/api/categories', auth, require('./src/routes/categories'));
+app.use('/api/transactions', auth, require('./src/routes/transactions'));
+app.use('/api/budgets', auth, require('./src/routes/budgets'));
+app.use('/api/savings', auth, require('./src/routes/savings'));
+app.use('/api/ai', auth, require('./src/routes/ai'));
 
 // Serve frontend build in production
 const publicDir = path.join(__dirname, 'public');
