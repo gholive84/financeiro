@@ -157,8 +157,13 @@ export default function CalendarPage() {
                               {t.category.parent_name ? `${t.category.parent_name} › ${t.category.name}` : t.category.name}
                             </span>
                           )}
+                          {t.account && (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-400 font-medium">
+                              {t.account.name}
+                            </span>
+                          )}
                           {t.credit_card && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+                            <span className="text-[10px] px-1.5 py-0.5 font-medium"
                               style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
                               {t.credit_card.name}
                             </span>
