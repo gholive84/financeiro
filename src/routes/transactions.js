@@ -72,7 +72,7 @@ router.get('/', async (req, res, next) => {
     if (account_id) { sql += ' AND t.account_id = ?'; params.push(account_id); }
     if (credit_card_id) { sql += ' AND t.credit_card_id = ?'; params.push(credit_card_id); }
     if (status) { sql += ' AND t.status = ?'; params.push(status); }
-    if (req.query.category_id) { sql += ' AND t.category_id = ?'; params.push(req.query.category_id); }
+    if (req.query.category_id) { sql += ' AND (t.category_id = ? OR t.category_id IN (SELECT id FROM categories WHERE parent_id = ?))'; params.push(req.query.category_id, req.query.category_id); }
 
     sql += ' ORDER BY t.date DESC, t.created_at DESC';
     const [rows] = await db.query(sql, params);

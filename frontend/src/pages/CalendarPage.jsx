@@ -69,7 +69,8 @@ function applyFilters(data, search, categoryId) {
   for (const [key, day] of Object.entries(data)) {
     const txs = day.transactions.filter(t => {
       const matchSearch = !q || t.description?.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q);
-      const matchCat = !categoryId || t.category?.id === categoryId || t.category?.parent_id === categoryId;
+      const catId = Number(categoryId);
+      const matchCat = !categoryId || t.category?.id === catId || t.category?.parent_id === catId;
       return matchSearch && matchCat;
     });
     if (txs.length === 0) continue;
@@ -163,9 +164,17 @@ export default function CalendarPage() {
           className="sm:w-52 px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white"
         >
           <option value="">Todas as categorias</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
-          ))}
+          {categories.filter(c => !c.parent_id).map(parent => {
+            const subs = categories.filter(c => String(c.parent_id) === String(parent.id));
+            return subs.length > 0 ? (
+              <optgroup key={parent.id} label={parent.name}>
+                <option value={parent.id}>{parent.name}</option>
+                {subs.map(c => <option key={c.id} value={c.id}>↳ {c.name}</option>)}
+              </optgroup>
+            ) : (
+              <option key={parent.id} value={parent.id}>{parent.name}</option>
+            );
+          })}
         </select>
         {hasFilters && (
           <button
