@@ -13,7 +13,15 @@ function CategoryIcon({ icon, color }) {
   );
 }
 
-export default function TransactionList({ transactions, onEdit, onDelete }) {
+function Badge({ children, style, className = '' }) {
+  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${className}`} style={style}>{children}</span>;
+}
+
+function AccountTag({ name }) {
+  return <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-400 font-medium">{name}</span>;
+}
+
+export default function TransactionList({ transactions, onEdit, onDelete, onDetail }) {
   if (!transactions.length) {
     return <p className="text-center text-slate-400 py-10 text-sm">Nenhuma transação encontrada.</p>;
   }
@@ -21,47 +29,40 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
   return (
     <div className="space-y-2">
       {transactions.map(t => (
-        <div key={t.id} className="bg-white rounded-xl border border-slate-100 px-4 py-3 hover:shadow-sm transition-shadow">
+        <div key={t.id}
+          className="bg-white rounded-xl border border-slate-100 px-4 py-3 hover:shadow-sm transition-shadow cursor-pointer"
+          onClick={() => onDetail?.(t)}>
           <div className="flex items-center gap-3">
             <CategoryIcon icon={t.category?.icon} color={t.category?.color || '#64748B'} />
 
-            {/* Descrição + data (mobile: abaixo; desktop: inline) */}
             <div className="flex-1 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                 <p className="text-sm font-medium text-slate-800 truncate">{t.description}</p>
 
-                {/* Badges — desktop: inline na mesma linha */}
+                {/* Badges desktop */}
                 <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
                   <span className="text-xs text-slate-400">
                     {String(t.date).split('T')[0].split('-').reverse().join('/')}
                   </span>
                   {t.category && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>
+                    <Badge style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>
                       {t.category.parent_name ? `${t.category.parent_name} › ${t.category.name}` : t.category.name}
-                    </span>
+                    </Badge>
                   )}
-                  {t.account && (
-                    <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-400 font-medium">
-                      {t.account.name}
-                    </span>
-                  )}
+                  {t.account && <AccountTag name={t.account.name} />}
                   {t.credit_card && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
+                    <Badge style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
                       {t.credit_card.name}
-                    </span>
+                    </Badge>
                   )}
                   {t.installment_total > 1 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-500 font-semibold">
-                      {t.installment_current}/{t.installment_total}x
-                    </span>
+                    <Badge className="bg-purple-50 text-purple-500">{t.installment_current}/{t.installment_total}x</Badge>
                   )}
-                  {t.status === 'pending' && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">Pendente</span>
-                  )}
+                  {t.status === 'pending' && <Badge className="bg-amber-50 text-amber-600">Pendente</Badge>}
                   {t.user && <span className="text-xs text-slate-300">@{t.user.username}</span>}
                 </div>
 
-                {/* Mobile: data abaixo */}
+                {/* Data mobile */}
                 <p className="sm:hidden text-xs text-slate-400 mt-0.5">
                   {String(t.date).split('T')[0].split('-').reverse().join('/')}
                   {t.user && <span className="ml-1 text-slate-300">· @{t.user.username}</span>}
@@ -74,40 +75,34 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
               <span className={`text-sm font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
                 {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
               </span>
-              <button onClick={() => onEdit(t)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-300 hover:text-blue-600 transition-colors">
+              <button onClick={e => { e.stopPropagation(); onEdit(t); }}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-300 hover:text-blue-600 transition-colors">
                 <Pencil size={13} />
               </button>
-              <button onClick={() => onDelete(t.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors">
+              <button onClick={e => { e.stopPropagation(); onDelete(t.id); }}
+                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors">
                 <Trash2 size={13} />
               </button>
             </div>
           </div>
 
-          {/* Badges — mobile: linha 2 */}
+          {/* Badges mobile linha 2 */}
           <div className="sm:hidden flex flex-wrap items-center gap-1.5 mt-2 pl-11">
             {t.category && (
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>
+              <Badge style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>
                 {t.category.parent_name ? `${t.category.parent_name} › ${t.category.name}` : t.category.name}
-              </span>
+              </Badge>
             )}
-            {t.account && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
-                {t.account.name}
-              </span>
-            )}
+            {t.account && <AccountTag name={t.account.name} />}
             {t.credit_card && (
-              <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
+              <Badge style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
                 {t.credit_card.name}
-              </span>
+              </Badge>
             )}
             {t.installment_total > 1 && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-500 font-semibold">
-                {t.installment_current}/{t.installment_total}x
-              </span>
+              <Badge className="bg-purple-50 text-purple-500">{t.installment_current}/{t.installment_total}x</Badge>
             )}
-            {t.status === 'pending' && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">Pendente</span>
-            )}
+            {t.status === 'pending' && <Badge className="bg-amber-50 text-amber-600">Pendente</Badge>}
           </div>
         </div>
       ))}

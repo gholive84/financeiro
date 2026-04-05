@@ -1,10 +1,62 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Trash2, Pencil, X } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/shared/Modal';
 import TransactionForm from '../components/Transactions/TransactionForm';
 import TransactionList from '../components/Transactions/TransactionList';
 import { useApp } from '../context/AppContext';
+
+function TransactionDetail({ t, onClose, onEdit, onDelete }) {
+  function Row({ label, value }) {
+    return (
+      <div className="flex items-center justify-between gap-3 py-2 border-b border-slate-50 last:border-0">
+        <span className="text-xs text-slate-400 flex-shrink-0">{label}</span>
+        <span className="text-sm text-slate-700 font-medium text-right">{value}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-slate-800 truncate">{t.description}</p>
+          <p className={`text-xl font-bold mt-0.5 ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
+            {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
+          </p>
+        </div>
+      </div>
+      <div>
+        <Row label="Data" value={String(t.date).split('T')[0].split('-').reverse().join('/')} />
+        <Row label="Tipo" value={t.type === 'income' ? 'Receita' : 'Despesa'} />
+        <Row label="Status" value={t.status === 'paid' ? 'Pago' : 'Pendente'} />
+        {t.category && <Row label="Categoria" value={
+          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: t.category.color + '22', color: t.category.color }}>
+            {t.category.parent_name ? `${t.category.parent_name} › ${t.category.name}` : t.category.name}
+          </span>
+        } />}
+        {t.account && <Row label="Conta" value={t.account.name} />}
+        {t.credit_card && <Row label="Cartão" value={
+          <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
+            {t.credit_card.name}
+          </span>
+        } />}
+        {t.installment_total > 1 && <Row label="Parcela" value={`${t.installment_current}/${t.installment_total}x`} />}
+        {t.notes && <Row label="Notas" value={t.notes} />}
+        {t.user && <Row label="Usuário" value={`@${t.user.username}`} />}
+      </div>
+      <div className="flex gap-2 pt-1">
+        <button onClick={onEdit}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50 text-sm font-semibold transition-colors">
+          <Pencil size={14} /> Editar
+        </button>
+        <button onClick={onDelete}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-sm font-semibold transition-colors">
+          <Trash2 size={14} /> Excluir
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function TransactionsPage() {
   const now = new Date();
@@ -12,6 +64,7 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [detail, setDetail] = useState(null);
   const [filters, setFilters] = useState({ month: now.getMonth() + 1, year: now.getFullYear(), type: '', status: '', category_id: '' });
   const [search, setSearch] = useState('');
   const { categories, loadCategories } = useApp();
@@ -32,8 +85,8 @@ export default function TransactionsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleSave = () => { setModal(false); setEditing(null); load(); };
-  const handleEdit = (t) => { setEditing(t); setModal(true); };
+  const handleSave = () => { setModal(false); setEditing(null); setDetail(null); load(); };
+  const handleEdit = (t) => { setDetail(null); setEditing(t); setModal(true); };
   const handleDelete = async (id) => {
     const t = transactions.find(t => t.id === id);
     const isInstallment = t?.installment_total > 1 && t?.installment_group_id;
@@ -148,7 +201,7 @@ export default function TransactionsPage() {
       {loading ? (
         <p className="text-slate-400 text-sm text-center py-10">Carregando...</p>
       ) : (
-        <TransactionList transactions={filtered} onEdit={handleEdit} onDelete={handleDelete} />
+        <TransactionList transactions={filtered} onEdit={handleEdit} onDelete={handleDelete} onDetail={t => setDetail(t)} />
       )}
 
       <Modal open={modal} onClose={() => { setModal(false); setEditing(null); }} title={editing ? 'Editar Transação' : 'Nova Transação'}>
@@ -157,6 +210,17 @@ export default function TransactionsPage() {
           onSave={handleSave}
           onCancel={() => { setModal(false); setEditing(null); }}
         />
+      </Modal>
+
+      <Modal open={!!detail} onClose={() => setDetail(null)} title="Detalhes">
+        {detail && (
+          <TransactionDetail
+            t={detail}
+            onClose={() => setDetail(null)}
+            onEdit={() => handleEdit(detail)}
+            onDelete={() => handleDelete(detail.id)}
+          />
+        )}
       </Modal>
     </div>
   );
