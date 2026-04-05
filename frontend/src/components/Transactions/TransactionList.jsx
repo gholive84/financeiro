@@ -49,17 +49,10 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
                       {t.category.parent_name ? `${t.category.parent_name} › ${t.category.name}` : t.category.name}
                     </Badge>
                   )}
-                  {t.account && <AccountTag name={t.account.name} />}
-                  {t.credit_card && (
-                    <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
-                      {t.credit_card.name}
-                    </span>
-                  )}
                   {t.installment_total > 1 && (
                     <Badge className="bg-purple-50 text-purple-500">{t.installment_current}/{t.installment_total}x</Badge>
                   )}
                   {t.status === 'pending' && <Badge className="bg-amber-50 text-amber-600">Pendente</Badge>}
-                  {t.user && <span className="text-xs text-slate-300">@{t.user.username}</span>}
                 </div>
 
                 {/* Data mobile */}
@@ -71,7 +64,17 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
             </div>
 
             {/* Valor + ações */}
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Tags direita — conta, cartão, usuário */}
+              <div className="hidden sm:flex flex-col items-end gap-0.5">
+                {t.account && <AccountTag name={t.account.name} />}
+                {t.credit_card && (
+                  <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
+                    {t.credit_card.name}
+                  </span>
+                )}
+                {t.user && <span className="text-[10px] text-slate-300">@{t.user.username}</span>}
+              </div>
               <span className={`text-sm font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
                 {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
               </span>

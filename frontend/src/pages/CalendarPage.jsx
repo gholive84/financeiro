@@ -1,10 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import CalendarGrid from '../components/Calendar/CalendarGrid';
 import api from '../services/api';
-import { X, Trash2, ChevronLeft } from 'lucide-react';
-import * as Icons from 'lucide-react';
-
-const toIconName = (s) => s?.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^(.)/, (_, c) => c.toUpperCase());
+import { X, Trash2, ChevronLeft, Search } from 'lucide-react';
 
 function TransactionDetail({ transaction: t, onClose, onDelete }) {
   return (
@@ -65,6 +62,26 @@ function Row({ label, value }) {
   );
 }
 
+function applyFilters(data, search, categoryId) {
+  if (!search && !categoryId) return data;
+  const q = search.toLowerCase().trim();
+  const filtered = {};
+  for (const [key, day] of Object.entries(data)) {
+    const txs = day.transactions.filter(t => {
+      const matchSearch = !q || t.description?.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q);
+      const matchCat = !categoryId || t.category?.id === categoryId || t.category?.parent_id === categoryId;
+      return matchSearch && matchCat;
+    });
+    if (txs.length === 0) continue;
+    filtered[key] = {
+      transactions: txs,
+      total_income: txs.filter(t => t.type === 'income').reduce((s, t) => s + parseFloat(t.amount), 0),
+      total_expense: txs.filter(t => t.type === 'expense').reduce((s, t) => s + parseFloat(t.amount), 0),
+    };
+  }
+  return filtered;
+}
+
 export default function CalendarPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -73,6 +90,9 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [search, setSearch] = useState('');
+  const [categoryId, setCategoryId] = useState('');
 
   const load = async (y, m) => {
     setLoading(true);
@@ -83,7 +103,25 @@ export default function CalendarPage() {
 
   useEffect(() => { load(year, month); }, [year, month]);
 
+  useEffect(() => {
+    api.get('/categories').then(({ data }) => setCategories(data)).catch(() => {});
+  }, []);
+
+  const filteredData = useMemo(() => applyFilters(data, search, categoryId || null), [data, search, categoryId]);
+
   const handleMonthChange = (y, m) => { setYear(y); setMonth(m); setSelectedDay(null); setSelectedTransaction(null); };
+
+  const handleDayClick = (key, dayData) => {
+    setSelectedDay({ key, ...dayData });
+    setSelectedTransaction(null);
+  };
+
+  const visibleSelectedDay = useMemo(() => {
+    if (!selectedDay) return null;
+    const fd = filteredData[selectedDay.key];
+    if (!fd) return null;
+    return { key: selectedDay.key, ...fd };
+  }, [selectedDay, filteredData]);
 
   const handleDelete = async (t) => {
     const isInstallment = t.installment_total > 1 && t.installment_group_id;
@@ -101,23 +139,57 @@ export default function CalendarPage() {
     load(year, month);
   };
 
+  const hasFilters = search || categoryId;
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Calendário</h1>
+
+      {/* Filtros */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar lançamento..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setSelectedDay(null); setSelectedTransaction(null); }}
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white"
+          />
+        </div>
+        <select
+          value={categoryId}
+          onChange={e => { setCategoryId(e.target.value); setSelectedDay(null); setSelectedTransaction(null); }}
+          className="sm:w-52 px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white"
+        >
+          <option value="">Todas as categorias</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+        </select>
+        {hasFilters && (
+          <button
+            onClick={() => { setSearch(''); setCategoryId(''); setSelectedDay(null); setSelectedTransaction(null); }}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-colors bg-white whitespace-nowrap"
+          >
+            <X size={14} /> Limpar
+          </button>
+        )}
+      </div>
 
       {loading && <p className="text-slate-400 text-sm">Carregando...</p>}
 
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1">
           <CalendarGrid
-            year={year} month={month} data={data}
-            onDayClick={(key, dayData) => { setSelectedDay({ key, ...dayData }); setSelectedTransaction(null); }}
+            year={year} month={month} data={filteredData}
+            onDayClick={handleDayClick}
             onMonthChange={handleMonthChange}
           />
         </div>
 
         {/* Painel lateral */}
-        {selectedDay && (
+        {visibleSelectedDay && (
           <div className="lg:w-80 bg-white rounded-2xl border border-slate-100 p-5 h-fit">
             {selectedTransaction ? (
               <TransactionDetail
@@ -130,14 +202,14 @@ export default function CalendarPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="font-semibold text-slate-800">
-                      {new Date(selectedDay.key + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      {new Date(visibleSelectedDay.key + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </p>
                     <div className="flex gap-3 mt-1">
-                      {selectedDay.total_income > 0 && (
-                        <span className="text-xs text-green-600 font-semibold">+R$ {selectedDay.total_income.toFixed(2).replace('.', ',')}</span>
+                      {visibleSelectedDay.total_income > 0 && (
+                        <span className="text-xs text-green-600 font-semibold">+R$ {visibleSelectedDay.total_income.toFixed(2).replace('.', ',')}</span>
                       )}
-                      {selectedDay.total_expense > 0 && (
-                        <span className="text-xs text-red-500 font-semibold">-R$ {selectedDay.total_expense.toFixed(2).replace('.', ',')}</span>
+                      {visibleSelectedDay.total_expense > 0 && (
+                        <span className="text-xs text-red-500 font-semibold">-R$ {visibleSelectedDay.total_expense.toFixed(2).replace('.', ',')}</span>
                       )}
                     </div>
                   </div>
@@ -146,7 +218,7 @@ export default function CalendarPage() {
                   </button>
                 </div>
                 <div className="space-y-1">
-                  {selectedDay.transactions.map(t => (
+                  {visibleSelectedDay.transactions.map(t => (
                     <button key={t.id} onClick={() => setSelectedTransaction(t)}
                       className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-slate-50 transition-colors text-left">
                       <div className="flex-1 min-w-0">
