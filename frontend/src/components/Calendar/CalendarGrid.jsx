@@ -71,32 +71,16 @@ export default function CalendarGrid({ year, month, data, onDayClick, onMonthCha
               </span>
               {dayData && (
                 <div className="mt-1 space-y-0.5">
-                  {dayData.total_income > 0 && (
-                    <p className="text-xs text-green-600 font-medium truncate">
-                      +{dayData.total_income.toFixed(0)}
-                    </p>
-                  )}
                   {dayData.total_expense > 0 && (
-                    <p className="text-xs text-red-500 font-medium truncate">
-                      -{dayData.total_expense.toFixed(0)}
+                    <p className="text-xs text-red-500 font-semibold truncate">
+                      -R$ {dayData.total_expense.toFixed(2).replace('.', ',')}
                     </p>
                   )}
-                  {/* Credit card badges */}
-                  <div className="flex flex-wrap gap-0.5 mt-1">
-                    {dayData.transactions
-                      .filter(t => t.credit_card)
-                      .slice(0, 2)
-                      .map(t => (
-                        <span
-                          key={t.id}
-                          className="text-[10px] px-1 rounded font-semibold"
-                          style={{ backgroundColor: t.credit_card.color + '33', color: t.credit_card.color }}
-                        >
-                          {t.credit_card.name}
-                        </span>
-                      ))
-                    }
-                  </div>
+                  {dayData.total_income > 0 && (
+                    <p className="text-xs text-green-600 font-semibold truncate">
+                      +R$ {dayData.total_income.toFixed(2).replace('.', ',')}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

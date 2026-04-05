@@ -41,7 +41,7 @@ export default function TransactionList({ transactions, onEdit, onDelete }) {
                     </span>
                   )}
                   {t.account && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
+                    <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-400 font-medium">
                       {t.account.name}
                     </span>
                   )}
