@@ -51,9 +51,9 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
                   )}
                   {t.account && <AccountTag name={t.account.name} />}
                   {t.credit_card && (
-                    <Badge style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
+                    <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
                       {t.credit_card.name}
-                    </Badge>
+                    </span>
                   )}
                   {t.installment_total > 1 && (
                     <Badge className="bg-purple-50 text-purple-500">{t.installment_current}/{t.installment_total}x</Badge>
