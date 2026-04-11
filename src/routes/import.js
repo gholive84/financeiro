@@ -8,17 +8,8 @@ const db = require('../db');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
-async function interpretWithGPT(text, categories, accounts, creditCards) {
-  const today = new Date().toISOString().split('T')[0];
-
-  const prompt = `Você é um assistente de finanças pessoais. Analise o texto abaixo (extrato bancário, fatura de cartão, lista de despesas em CSV ou qualquer formato financeiro) e extraia TODAS as transações encontradas.
-
-Texto:
-${text.slice(0, 8000)}
-
-Data de hoje: ${today}
-
-Categorias disponíveis:
+function buildJsonSchema(categories, accounts, creditCards, today) {
+  return `Categorias disponíveis:
 ${categories.map(c => `- id:${c.id} "${c.name}" (${c.type})`).join('\n')}
 
 Contas disponíveis:
@@ -44,11 +35,30 @@ Retorne SOMENTE um JSON válido com esta estrutura (sem markdown, sem explicaç�
 }
 
 Regras:
-- Extraia TODAS as transações que encontrar no texto
+- Extraia TODAS as transações que encontrar
 - Se não conseguir determinar a data, use hoje (${today})
 - Valores sempre positivos
 - Se for fatura de cartão, use credit_card_id quando possível
-- Ignore totais, saldos e linhas que não sejam transações`;
+- Ignore totais, saldos e linhas que não sejam transações individuais`;
+}
+
+function parseGPTResponse(raw) {
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error(`IA não retornou JSON válido: ${raw.slice(0, 200)}`);
+  return JSON.parse(match[0]);
+}
+
+async function interpretWithGPT(text, categories, accounts, creditCards) {
+  const today = new Date().toISOString().split('T')[0];
+
+  const prompt = `Você é um assistente de finanças pessoais. Analise o texto abaixo (extrato bancário, fatura de cartão, lista de despesas em CSV ou qualquer formato financeiro) e extraia TODAS as transações encontradas.
+
+Texto:
+${text.slice(0, 8000)}
+
+Data de hoje: ${today}
+
+${buildJsonSchema(categories, accounts, creditCards, today)}`;
 
   const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
     model: 'gpt-4o-mini',
@@ -60,10 +70,37 @@ Regras:
   });
 
   const raw = gptRes.data.choices[0].message.content.trim();
-  // Extrai o primeiro bloco JSON { ... } da resposta, ignorando markdown
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error(`IA não retornou JSON válido: ${raw.slice(0, 200)}`);
-  return JSON.parse(match[0]);
+  return parseGPTResponse(raw);
+}
+
+async function interpretImageWithGPT(imageBuffer, mimeType, categories, accounts, creditCards) {
+  const today = new Date().toISOString().split('T')[0];
+  const base64 = imageBuffer.toString('base64');
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  const prompt = `Você é um assistente de finanças pessoais. Analise a imagem abaixo (pode ser um print de extrato bancário, fatura de cartão, comprovante de pagamento, print de app de banco, ou qualquer documento financeiro) e extraia TODAS as transações encontradas.
+
+Data de hoje: ${today}
+
+${buildJsonSchema(categories, accounts, creditCards, today)}`;
+
+  const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+    model: 'gpt-4o',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
+        { type: 'text', text: prompt },
+      ],
+    }],
+    temperature: 0.1,
+  }, {
+    headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+    timeout: 90000,
+  });
+
+  const raw = gptRes.data.choices[0].message.content.trim();
+  return parseGPTResponse(raw);
 }
 
 // Tenta parsear CSV estruturado diretamente (sem GPT), retorna null se não conseguir
@@ -143,6 +180,14 @@ router.post('/preview', upload.single('file'), async (req, res, next) => {
     const buffer = req.file.buffer;
     const isPDF = mime === 'application/pdf' || req.file.originalname?.endsWith('.pdf');
     const isCSV = !isPDF && (req.file.originalname?.endsWith('.csv') || mime.includes('csv'));
+    const isImage = /^image\/(png|jpe?g|webp|gif)$/i.test(mime) ||
+      /\.(png|jpe?g|webp|gif)$/i.test(req.file.originalname || '');
+
+    // Para imagens: usa GPT-4o vision
+    if (isImage) {
+      const result = await interpretImageWithGPT(buffer, mime, categories, accounts, creditCards);
+      return res.json({ transactions: result.transactions, total: result.transactions.length, source: 'vision' });
+    }
 
     // Para CSV: tenta parse direto primeiro (sem IA, sem timeout)
     if (isCSV) {

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, Loader2, CheckCircle, Trash2, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Image, Loader2, CheckCircle, Trash2, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import { useApp } from '../context/AppContext';
 import { useEffect } from 'react';
@@ -15,12 +15,14 @@ export default function ImportPage() {
   const [savedCount, setSavedCount] = useState(0);
   const [pdfPassword, setPdfPassword] = useState('');
   const [pendingFile, setPendingFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const fileRef = useRef();
   const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
 
   useEffect(() => { loadCategories(); loadAccounts(); loadCreditCards(); }, []);
 
   const isPDF = (file) => file?.name?.toLowerCase().endsWith('.pdf') || file?.type === 'application/pdf';
+  const isImage = (file) => /^image\/(png|jpe?g|webp|gif)$/i.test(file?.type) || /\.(png|jpe?g|webp|gif)$/i.test(file?.name || '');
 
   const handleFile = (e) => {
     const file = e.target.files[0];
@@ -28,8 +30,13 @@ export default function ImportPage() {
     setFileName(file.name);
     setError('');
     setPdfPassword('');
+    setImagePreview(null);
     if (isPDF(file)) {
       setPendingFile(file);  // aguarda senha antes de processar
+    } else if (isImage(file)) {
+      const url = URL.createObjectURL(file);
+      setImagePreview(url);
+      setPendingFile(file);  // mostra preview antes de processar
     } else {
       setPendingFile(null);
       submitFile(file, '');
@@ -80,7 +87,12 @@ export default function ImportPage() {
     }
   };
 
-  const reset = () => { setStep(STEPS.idle); setTransactions([]); setSelected([]); setError(''); setFileName(''); setPendingFile(null); setPdfPassword(''); if (fileRef.current) fileRef.current.value = ''; };
+  const reset = () => {
+    setStep(STEPS.idle); setTransactions([]); setSelected([]); setError(''); setFileName('');
+    setPendingFile(null); setPdfPassword('');
+    if (imagePreview) { URL.revokeObjectURL(imagePreview); setImagePreview(null); }
+    if (fileRef.current) fileRef.current.value = '';
+  };
 
   const totalAmount = transactions.filter(t => selected.includes(t._id))
     .reduce((s, t) => t.type === 'income' ? s + parseFloat(t.amount) : s - parseFloat(t.amount), 0);
@@ -100,16 +112,16 @@ export default function ImportPage() {
           <Upload size={40} className="text-slate-300" />
           <div className="text-center">
             <p className="font-semibold text-slate-700">Clique para selecionar arquivo</p>
-            <p className="text-sm text-slate-400 mt-1">PDF ou CSV — extrato bancário, fatura de cartão, lista de despesas</p>
+            <p className="text-sm text-slate-400 mt-1">PDF, CSV, TXT ou <strong>print/screenshot</strong> — a IA interpreta qualquer formato</p>
           </div>
-          <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full">PDF, CSV, TXT</span>
+          <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full">PDF, CSV, TXT, PNG, JPG, WEBP</span>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <input ref={fileRef} type="file" accept=".pdf,.csv,.txt" className="hidden" onChange={handleFile} />
+          <input ref={fileRef} type="file" accept=".pdf,.csv,.txt,.png,.jpg,.jpeg,.webp,.gif" className="hidden" onChange={handleFile} />
         </div>
       )}
 
       {/* PDF com senha */}
-      {step === STEPS.idle && pendingFile && (
+      {step === STEPS.idle && pendingFile && !imagePreview && (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center gap-5">
           <FileText size={40} className="text-blue-400" />
           <div className="text-center">
@@ -133,13 +145,34 @@ export default function ImportPage() {
         </div>
       )}
 
+      {/* Preview de imagem */}
+      {step === STEPS.idle && pendingFile && imagePreview && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 flex flex-col items-center gap-5">
+          <div className="w-full rounded-xl overflow-hidden border border-slate-100 max-h-72 flex items-center justify-center bg-slate-50">
+            <img src={imagePreview} alt="Preview" className="max-h-72 object-contain" />
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-slate-800">{fileName}</p>
+            <p className="text-sm text-slate-400 mt-1">A IA vai analisar a imagem e extrair as transações</p>
+          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex gap-3 w-full">
+            <button onClick={reset} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
+            <button onClick={() => submitFile(pendingFile, '')}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+              <Image size={16} /> Analisar imagem
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* PROCESSING */}
       {step === STEPS.processing && (
         <div className="bg-white rounded-2xl border border-slate-100 p-12 flex flex-col items-center gap-4">
           <Loader2 size={48} className="text-blue-600 animate-spin" />
           <div className="text-center">
             <p className="font-semibold text-slate-700">Analisando {fileName}...</p>
-            <p className="text-sm text-slate-400 mt-1">A IA está extraindo as transações do arquivo</p>
+            <p className="text-sm text-slate-400 mt-1">{imagePreview ? 'A IA está interpretando a imagem e extraindo as transações' : 'A IA está extraindo as transações do arquivo'}</p>
           </div>
         </div>
       )}
@@ -294,7 +327,7 @@ export default function ImportPage() {
             {[
               { icon: FileText, title: 'Fatura PDF', desc: 'Fatura de cartão de crédito em PDF' },
               { icon: FileText, title: 'Extrato CSV', desc: 'Extrato bancário exportado do banco' },
-              { icon: FileText, title: 'Lista TXT', desc: 'Lista de despesas em qualquer formato de texto' },
+              { icon: Image, title: 'Print / Screenshot', desc: 'Print de app do banco, comprovante ou extrato em imagem (PNG, JPG, WEBP)' },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex gap-3 p-3 rounded-xl bg-slate-50">
                 <Icon size={18} className="text-blue-400 flex-shrink-0 mt-0.5" />
