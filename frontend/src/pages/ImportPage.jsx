@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, Image, Loader2, CheckCircle, Trash2, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Image, Loader2, CheckCircle, Trash2, AlertCircle, CreditCard, Landmark } from 'lucide-react';
 import api from '../services/api';
 import { useApp } from '../context/AppContext';
 import { useEffect } from 'react';
@@ -16,6 +16,8 @@ export default function ImportPage() {
   const [pdfPassword, setPdfPassword] = useState('');
   const [pendingFile, setPendingFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [defaultAccountId, setDefaultAccountId] = useState('');
+  const [defaultCardId, setDefaultCardId] = useState('');
   const fileRef = useRef();
   const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
 
@@ -32,15 +34,24 @@ export default function ImportPage() {
     setPdfPassword('');
     setImagePreview(null);
     if (isPDF(file)) {
-      setPendingFile(file);  // aguarda senha antes de processar
+      setPendingFile(file);
     } else if (isImage(file)) {
       const url = URL.createObjectURL(file);
       setImagePreview(url);
-      setPendingFile(file);  // mostra preview antes de processar
+      setPendingFile(file);
     } else {
       setPendingFile(null);
       submitFile(file, '');
     }
+  };
+
+  const applyDefaults = (txList) => {
+    if (!defaultAccountId && !defaultCardId) return txList;
+    return txList.map(t => ({
+      ...t,
+      account_id: defaultCardId ? null : (defaultAccountId || t.account_id),
+      credit_card_id: defaultCardId || t.credit_card_id,
+    }));
   };
 
   const submitFile = async (file, password) => {
@@ -50,8 +61,9 @@ export default function ImportPage() {
       formData.append('file', file);
       if (password) formData.append('password', password);
       const { data } = await api.post('/import/preview', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setTransactions(data.transactions.map((t, i) => ({ ...t, _id: i })));
-      setSelected(data.transactions.map((_, i) => i));
+      const withDefaults = applyDefaults(data.transactions);
+      setTransactions(withDefaults.map((t, i) => ({ ...t, _id: i })));
+      setSelected(withDefaults.map((_, i) => i));
       setPendingFile(null);
       setStep(STEPS.review);
     } catch (err) {
@@ -71,6 +83,10 @@ export default function ImportPage() {
   const removeTransaction = (id) => {
     setTransactions(ts => ts.filter(t => t._id !== id));
     setSelected(s => s.filter(x => x !== id));
+  };
+
+  const bulkUpdate = (key, value) => {
+    setTransactions(ts => ts.map(t => selected.includes(t._id) ? { ...t, [key]: value || null } : t));
   };
 
   const handleSave = async () => {
@@ -94,29 +110,60 @@ export default function ImportPage() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const totalAmount = transactions.filter(t => selected.includes(t._id))
-    .reduce((s, t) => t.type === 'income' ? s + parseFloat(t.amount) : s - parseFloat(t.amount), 0);
+  // Seletor de conta/cartão padrão (reutilizado no idle e nos previews)
+  const DefaultSourceSelector = () => (
+    <div className="w-full flex gap-3 flex-wrap">
+      <div className="flex-1 min-w-0">
+        <label className="text-xs font-semibold text-slate-500 mb-1 block">Cartão de crédito</label>
+        <select
+          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          value={defaultCardId}
+          onChange={e => { setDefaultCardId(e.target.value); if (e.target.value) setDefaultAccountId(''); }}>
+          <option value="">Nenhum (deixar a IA decidir)</option>
+          {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}{c.bank ? ` · ${c.bank}` : ''}</option>)}
+        </select>
+      </div>
+      <div className="flex-1 min-w-0">
+        <label className="text-xs font-semibold text-slate-500 mb-1 block">Conta bancária</label>
+        <select
+          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          value={defaultAccountId}
+          onChange={e => { setDefaultAccountId(e.target.value); if (e.target.value) setDefaultCardId(''); }}>
+          <option value="">Nenhuma (deixar a IA decidir)</option>
+          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Importar Despesas</h1>
-        <p className="text-slate-400 text-sm mt-1">Envie um PDF ou CSV — a IA interpreta e você confirma os lançamentos.</p>
+        <p className="text-slate-400 text-sm mt-1">Envie um PDF, CSV ou print — a IA interpreta e você confirma os lançamentos.</p>
       </div>
 
       {/* IDLE */}
       {step === STEPS.idle && !pendingFile && (
-        <div
-          className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 flex flex-col items-center gap-4 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
-          onClick={() => fileRef.current?.click()}>
-          <Upload size={40} className="text-slate-300" />
-          <div className="text-center">
-            <p className="font-semibold text-slate-700">Clique para selecionar arquivo</p>
-            <p className="text-sm text-slate-400 mt-1">PDF, CSV, TXT ou <strong>print/screenshot</strong> — a IA interpreta qualquer formato</p>
+        <div className="space-y-4">
+          {/* Seletor de origem */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Origem das transações (opcional)</p>
+            <DefaultSourceSelector />
           </div>
-          <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full">PDF, CSV, TXT, PNG, JPG, WEBP</span>
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <input ref={fileRef} type="file" accept=".pdf,.csv,.txt,.png,.jpg,.jpeg,.webp,.gif" className="hidden" onChange={handleFile} />
+
+          <div
+            className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 flex flex-col items-center gap-4 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+            onClick={() => fileRef.current?.click()}>
+            <Upload size={40} className="text-slate-300" />
+            <div className="text-center">
+              <p className="font-semibold text-slate-700">Clique para selecionar arquivo</p>
+              <p className="text-sm text-slate-400 mt-1">PDF, CSV, TXT ou <strong>print/screenshot</strong> — a IA interpreta qualquer formato</p>
+            </div>
+            <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full">PDF, CSV, TXT, PNG, JPG, WEBP</span>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <input ref={fileRef} type="file" accept=".pdf,.csv,.txt,.png,.jpg,.jpeg,.webp,.gif" className="hidden" onChange={handleFile} />
+          </div>
         </div>
       )}
 
@@ -128,6 +175,7 @@ export default function ImportPage() {
             <p className="font-semibold text-slate-800">{fileName}</p>
             <p className="text-sm text-slate-400 mt-1">Este PDF é protegido por senha</p>
           </div>
+          <DefaultSourceSelector />
           <input
             type="password" placeholder="Senha do PDF"
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -155,6 +203,7 @@ export default function ImportPage() {
             <p className="font-semibold text-slate-800">{fileName}</p>
             <p className="text-sm text-slate-400 mt-1">A IA vai analisar a imagem e extrair as transações</p>
           </div>
+          <DefaultSourceSelector />
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex gap-3 w-full">
             <button onClick={reset} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
@@ -222,25 +271,52 @@ export default function ImportPage() {
 
           {error && <p className="text-sm text-red-500 flex items-center gap-1"><AlertCircle size={14} /> {error}</p>}
 
-          {/* Categorização em lote */}
+          {/* Ações em massa */}
           {selected.length > 1 && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold text-blue-700">Categorizar {selected.length} selecionadas:</span>
-              <select className="border border-blue-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none bg-white flex-1 min-w-0"
-                onChange={e => {
-                  if (!e.target.value) return;
-                  const [id, type] = e.target.value.split('|');
-                  setTransactions(ts => ts.map(t => selected.includes(t._id) && t.type === type ? { ...t, category_id: id } : t));
-                  e.target.value = '';
-                }}>
-                <option value="">Aplicar categoria a todas despesas/receitas selecionadas...</option>
-                <optgroup label="Despesas">
-                  {categories.filter(c => c.type === 'expense').map(c => <option key={c.id} value={`${c.id}|expense`}>{c.name}</option>)}
-                </optgroup>
-                <optgroup label="Receitas">
-                  {categories.filter(c => c.type === 'income').map(c => <option key={c.id} value={`${c.id}|income`}>{c.name}</option>)}
-                </optgroup>
-              </select>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 space-y-2">
+              <span className="text-xs font-semibold text-blue-700">Aplicar a {selected.length} selecionadas:</span>
+              <div className="flex gap-2 flex-wrap">
+                {/* Categoria */}
+                <select className="border border-blue-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none bg-white flex-1 min-w-[160px]"
+                  onChange={e => {
+                    if (!e.target.value) return;
+                    const [id, type] = e.target.value.split('|');
+                    setTransactions(ts => ts.map(t => selected.includes(t._id) && t.type === type ? { ...t, category_id: id } : t));
+                    e.target.value = '';
+                  }}>
+                  <option value="">Categoria...</option>
+                  <optgroup label="Despesas">
+                    {categories.filter(c => c.type === 'expense').map(c => <option key={c.id} value={`${c.id}|expense`}>{c.name}</option>)}
+                  </optgroup>
+                  <optgroup label="Receitas">
+                    {categories.filter(c => c.type === 'income').map(c => <option key={c.id} value={`${c.id}|income`}>{c.name}</option>)}
+                  </optgroup>
+                </select>
+
+                {/* Cartão */}
+                <select className="border border-blue-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none bg-white flex-1 min-w-[160px]"
+                  onChange={e => {
+                    bulkUpdate('credit_card_id', e.target.value);
+                    if (e.target.value) bulkUpdate('account_id', '');
+                    e.target.value = '';
+                  }}>
+                  <option value="">Cartão de crédito...</option>
+                  <option value="">— Nenhum —</option>
+                  {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}{c.bank ? ` · ${c.bank}` : ''}</option>)}
+                </select>
+
+                {/* Conta */}
+                <select className="border border-blue-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none bg-white flex-1 min-w-[160px]"
+                  onChange={e => {
+                    bulkUpdate('account_id', e.target.value);
+                    if (e.target.value) bulkUpdate('credit_card_id', '');
+                    e.target.value = '';
+                  }}>
+                  <option value="">Conta bancária...</option>
+                  <option value="">— Nenhuma —</option>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
             </div>
           )}
 
@@ -249,8 +325,9 @@ export default function ImportPage() {
             {transactions.map(t => (
               <div key={t._id} className={`bg-white rounded-xl border px-4 py-3 flex items-start gap-3 transition-all ${selected.includes(t._id) ? 'border-slate-100' : 'border-slate-100 opacity-50'}`}>
                 <input type="checkbox" checked={selected.includes(t._id)} onChange={() => toggleSelect(t._id)} className="mt-1 cursor-pointer" />
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="flex items-center gap-1.5 sm:col-span-1">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  {/* Descrição */}
+                  <div className="flex items-center gap-1.5 lg:col-span-1">
                     <input
                       className="border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
                       value={t.description} onChange={e => updateTransaction(t._id, 'description', e.target.value)} />
@@ -260,6 +337,7 @@ export default function ImportPage() {
                       </span>
                     )}
                   </div>
+                  {/* Tipo + Valor */}
                   <div className="flex gap-2">
                     <select className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none flex-1"
                       value={t.type} onChange={e => updateTransaction(t._id, 'type', e.target.value)}>
@@ -270,6 +348,7 @@ export default function ImportPage() {
                       className="border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none w-24"
                       value={t.amount} onChange={e => updateTransaction(t._id, 'amount', e.target.value)} />
                   </div>
+                  {/* Data + Categoria */}
                   <div className="flex gap-2">
                     <input type="date"
                       className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none flex-1"
@@ -278,6 +357,27 @@ export default function ImportPage() {
                       value={t.category_id || ''} onChange={e => updateTransaction(t._id, 'category_id', e.target.value || null)}>
                       <option value="">Categoria</option>
                       {categories.filter(c => c.type === t.type).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  {/* Cartão ou Conta */}
+                  <div className="flex gap-2">
+                    <select className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none flex-1"
+                      value={t.credit_card_id || ''}
+                      onChange={e => {
+                        updateTransaction(t._id, 'credit_card_id', e.target.value || null);
+                        if (e.target.value) updateTransaction(t._id, 'account_id', null);
+                      }}>
+                      <option value="">Cartão</option>
+                      {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <select className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none flex-1"
+                      value={t.account_id || ''}
+                      onChange={e => {
+                        updateTransaction(t._id, 'account_id', e.target.value || null);
+                        if (e.target.value) updateTransaction(t._id, 'credit_card_id', null);
+                      }}>
+                      <option value="">Conta</option>
+                      {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                   </div>
                 </div>
