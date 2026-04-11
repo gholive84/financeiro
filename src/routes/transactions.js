@@ -184,6 +184,27 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PATCH /api/transactions/bulk — atualiza campos em lote (categoria, conta, cartão)
+router.patch('/bulk', async (req, res, next) => {
+  try {
+    const { ids, category_id, account_id, credit_card_id } = req.body;
+    if (!ids?.length) return res.status(400).json({ error: 'Nenhum ID informado' });
+
+    const sets = [];
+    const params = [];
+
+    if (category_id !== undefined) { sets.push('category_id = ?'); params.push(category_id || null); }
+    if (account_id !== undefined)  { sets.push('account_id = ?');  params.push(account_id || null); }
+    if (credit_card_id !== undefined) { sets.push('credit_card_id = ?'); params.push(credit_card_id || null); }
+
+    if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar' });
+
+    const placeholders = ids.map(() => '?').join(',');
+    await db.query(`UPDATE transactions SET ${sets.join(', ')} WHERE id IN (${placeholders})`, [...params, ...ids]);
+    res.json({ updated: ids.length });
+  } catch (err) { next(err); }
+});
+
 // DELETE /api/transactions/:id?all=true (deleta todas as parcelas do grupo)
 router.delete('/:id', async (req, res, next) => {
   try {

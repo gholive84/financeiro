@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Trash2, Pencil, X } from 'lucide-react';
+import { Plus, Search, Trash2, Pencil, X, CheckSquare } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/shared/Modal';
 import TransactionForm from '../components/Transactions/TransactionForm';
@@ -67,8 +67,10 @@ export default function TransactionsPage() {
   const [detail, setDetail] = useState(null);
   const [filters, setFilters] = useState({ month: now.getMonth() + 1, year: now.getFullYear(), type: '', status: '', category_id: '' });
   const [search, setSearch] = useState('');
-  const { categories, loadCategories } = useApp();
-  useEffect(() => { loadCategories(); }, []);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkApplying, setBulkApplying] = useState(false);
+  const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
+  useEffect(() => { loadCategories(); loadAccounts(); loadCreditCards(); }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +89,22 @@ export default function TransactionsPage() {
 
   const handleSave = () => { setModal(false); setEditing(null); setDetail(null); load(); };
   const handleEdit = (t) => { setDetail(null); setEditing(t); setModal(true); };
+
+  const toggleSelect = (id) => setSelectedIds(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const clearSelection = () => setSelectedIds([]);
+  const selectAll = () => setSelectedIds(filtered.map(t => t.id));
+
+  const handleBulkApply = async (field, value) => {
+    if (!selectedIds.length) return;
+    setBulkApplying(true);
+    try {
+      await api.patch('/transactions/bulk', { ids: selectedIds, [field]: value || null });
+      await load();
+      clearSelection();
+    } finally {
+      setBulkApplying(false);
+    }
+  };
   const handleDelete = async (id) => {
     const t = transactions.find(t => t.id === id);
     const isInstallment = t?.installment_total > 1 && t?.installment_group_id;
@@ -198,10 +216,74 @@ export default function TransactionsPage() {
         </div>
       )}
 
+      {/* Barra de seleção em massa */}
+      {selectedIds.length > 0 && (
+        <div className="bg-blue-600 rounded-2xl px-4 py-3 flex items-center gap-3 flex-wrap">
+          <span className="text-white text-sm font-semibold flex-shrink-0">
+            {selectedIds.length} selecionada{selectedIds.length > 1 ? 's' : ''}
+          </span>
+          <div className="flex gap-2 flex-1 flex-wrap">
+            {/* Categoria */}
+            <select disabled={bulkApplying}
+              className="border border-blue-400 bg-blue-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none flex-1 min-w-[150px] disabled:opacity-60"
+              onChange={e => { if (e.target.value !== '') { handleBulkApply('category_id', e.target.value); e.target.value = ''; } }}>
+              <option value="">Categoria...</option>
+              <option value="">— Remover categoria —</option>
+              <optgroup label="Despesas">
+                {categories.filter(c => c.type === 'expense').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </optgroup>
+              <optgroup label="Receitas">
+                {categories.filter(c => c.type === 'income').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </optgroup>
+            </select>
+
+            {/* Cartão */}
+            <select disabled={bulkApplying}
+              className="border border-blue-400 bg-blue-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none flex-1 min-w-[150px] disabled:opacity-60"
+              onChange={e => { if (e.target.value !== '') { handleBulkApply('credit_card_id', e.target.value); e.target.value = ''; } }}>
+              <option value="">Cartão de crédito...</option>
+              <option value="">— Remover cartão —</option>
+              {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}{c.bank ? ` · ${c.bank}` : ''}</option>)}
+            </select>
+
+            {/* Conta */}
+            <select disabled={bulkApplying}
+              className="border border-blue-400 bg-blue-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none flex-1 min-w-[150px] disabled:opacity-60"
+              onChange={e => { if (e.target.value !== '') { handleBulkApply('account_id', e.target.value); e.target.value = ''; } }}>
+              <option value="">Conta bancária...</option>
+              <option value="">— Remover conta —</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <button onClick={selectAll} className="text-xs text-blue-200 hover:text-white transition-colors">
+              Todas ({filtered.length})
+            </button>
+            <button onClick={clearSelection} className="p-1.5 rounded-lg hover:bg-blue-500 text-blue-200 hover:text-white transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Dica quando nada selecionado */}
+      {selectedIds.length === 0 && !loading && filtered.length > 0 && (
+        <p className="text-xs text-slate-400 text-right -mt-2">
+          Clique em <CheckSquare size={11} className="inline" /> para selecionar transações em massa
+        </p>
+      )}
+
       {loading ? (
         <p className="text-slate-400 text-sm text-center py-10">Carregando...</p>
       ) : (
-        <TransactionList transactions={filtered} onEdit={handleEdit} onDelete={handleDelete} onDetail={t => setDetail(t)} />
+        <TransactionList
+          transactions={filtered}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onDetail={t => setDetail(t)}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+        />
       )}
 
       <Modal open={modal} onClose={() => { setModal(false); setEditing(null); }} title={editing ? 'Editar Transação' : 'Nova Transação'}>
