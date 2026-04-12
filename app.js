@@ -13,6 +13,7 @@ app.use(express.json());
 
 // Public routes
 app.use('/api/auth', require('./src/routes/auth'));
+app.use('/api/migrate', require('./src/routes/migrate'));
 
 // Protected routes
 app.use('/api/dashboard', auth, require('./src/routes/dashboard'));
