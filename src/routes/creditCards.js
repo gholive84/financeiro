@@ -5,7 +5,7 @@ const db = require('../db');
 // GET /api/credit-cards
 router.get('/', async (req, res, next) => {
   try {
-    const [rows] = await db.query('SELECT * FROM credit_cards ORDER BY name');
+    const [rows] = await db.query('SELECT * FROM credit_cards ORDER BY is_default DESC, name');
     res.json(rows);
   } catch (err) { next(err); }
 });
@@ -13,10 +13,13 @@ router.get('/', async (req, res, next) => {
 // POST /api/credit-cards
 router.post('/', async (req, res, next) => {
   try {
-    const { name, bank, color = '#FF6B00', closing_day, due_day, credit_limit } = req.body;
+    const { name, bank, color = '#FF6B00', closing_day, due_day, credit_limit, is_default = false } = req.body;
+    if (is_default) {
+      await db.query('UPDATE credit_cards SET is_default = 0');
+    }
     const [result] = await db.query(
-      'INSERT INTO credit_cards (name, bank, color, closing_day, due_day, credit_limit) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, bank, color, closing_day, due_day, credit_limit]
+      'INSERT INTO credit_cards (name, bank, color, closing_day, due_day, credit_limit, is_default) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, bank, color, closing_day, due_day, credit_limit, is_default ? 1 : 0]
     );
     const [rows] = await db.query('SELECT * FROM credit_cards WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
@@ -26,10 +29,13 @@ router.post('/', async (req, res, next) => {
 // PUT /api/credit-cards/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const { name, bank, color, closing_day, due_day, credit_limit } = req.body;
+    const { name, bank, color, closing_day, due_day, credit_limit, is_default } = req.body;
+    if (is_default) {
+      await db.query('UPDATE credit_cards SET is_default = 0 WHERE id != ?', [req.params.id]);
+    }
     await db.query(
-      'UPDATE credit_cards SET name=?, bank=?, color=?, closing_day=?, due_day=?, credit_limit=? WHERE id=?',
-      [name, bank, color, closing_day, due_day, credit_limit, req.params.id]
+      'UPDATE credit_cards SET name=?, bank=?, color=?, closing_day=?, due_day=?, credit_limit=?, is_default=? WHERE id=?',
+      [name, bank, color, closing_day, due_day, credit_limit, is_default ? 1 : 0, req.params.id]
     );
     const [rows] = await db.query('SELECT * FROM credit_cards WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Cartão não encontrado' });

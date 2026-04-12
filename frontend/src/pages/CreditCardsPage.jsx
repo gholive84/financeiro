@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, CreditCard } from 'lucide-react';
+import { Plus, Pencil, Trash2, CreditCard, Star } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/shared/Modal';
 
-const emptyCard = { name: '', bank: '', color: '#FF6B00', closing_day: 1, due_day: 10, credit_limit: '' };
+const emptyCard = { name: '', bank: '', color: '#FF6B00', closing_day: 1, due_day: 10, credit_limit: '', is_default: false };
 
 function CardForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = useState(initial || emptyCard);
+  const [form, setForm] = useState(initial
+    ? { ...initial, is_default: !!initial.is_default }
+    : emptyCard);
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -52,6 +54,19 @@ function CardForm({ initial, onSave, onCancel }) {
             value={form.due_day} onChange={e => set('due_day', parseInt(e.target.value))} />
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => set('is_default', !form.is_default)}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors
+          ${form.is_default
+            ? 'border-amber-300 bg-amber-50 text-amber-700'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+      >
+        <Star size={15} className={form.is_default ? 'fill-amber-400 text-amber-400' : 'text-slate-400'} />
+        {form.is_default ? 'Cartão padrão (pré-selecionado no lançamento com IA)' : 'Definir como cartão padrão'}
+      </button>
+
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
         <button type="submit" disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50">
@@ -97,14 +112,21 @@ export default function CreditCardsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {cards.map(c => (
-            <div key={c.id} className="bg-white rounded-2xl border border-slate-100 p-5">
+            <div key={c.id} className={`bg-white rounded-2xl border p-5 ${c.is_default ? 'border-amber-200' : 'border-slate-100'}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: c.color }}>
                     <CreditCard size={16} className="text-white" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800">{c.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-semibold text-slate-800">{c.name}</p>
+                      {c.is_default && (
+                        <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                          <Star size={9} className="fill-amber-500 text-amber-500" /> Padrão
+                        </span>
+                      )}
+                    </div>
                     {c.bank && <p className="text-xs text-slate-400">{c.bank}</p>}
                   </div>
                 </div>
