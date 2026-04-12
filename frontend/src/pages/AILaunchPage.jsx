@@ -54,11 +54,9 @@ export default function AILaunchPage() {
     return updated;
   });
 
-  // Aplica a pré-seleção à transação recebida da IA (só se a IA não detectou nada)
+  // Aplica a pré-seleção à transação recebida da IA (sempre sobrescreve)
   const applyPreSelected = (tx) => {
     if (!preSelected) return tx;
-    const hasSource = tx.account_id || tx.credit_card_id;
-    if (hasSource) return tx; // IA já detectou — não sobrescreve
     if (preSelected.startsWith('account_')) {
       return { ...tx, account_id: parseInt(preSelected.replace('account_', '')), credit_card_id: null };
     }
@@ -220,7 +218,6 @@ export default function AILaunchPage() {
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
               <span className="text-xs text-slate-500">
                 {label.icon === 'card' ? 'Cartão' : 'Conta'} <strong>{label.name}</strong> pré-selecionado
-                {label.icon === 'card' ? '' : ' — a IA pode substituir se detectar outro'}
               </span>
             </div>
           )}
