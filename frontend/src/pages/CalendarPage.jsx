@@ -1,7 +1,48 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import CalendarGrid from '../components/Calendar/CalendarGrid';
 import api from '../services/api';
-import { X, Trash2, ChevronLeft, Search } from 'lucide-react';
+import { X, Trash2, ChevronLeft, Search, Calendar } from 'lucide-react';
+
+// --- Utilitário de períodos ---
+const PERIOD_PRESETS = [
+  { key: 'today',      label: 'Hoje' },
+  { key: 'month',      label: 'Este mês' },
+  { key: 'last_month', label: 'Mês anterior' },
+  { key: 'custom',     label: 'Personalizado' },
+];
+
+function getPeriodRange(mode, customStart, customEnd) {
+  const today = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+
+  switch (mode) {
+    case 'today':
+      return { start: fmt(today), end: fmt(today), year: today.getFullYear(), month: today.getMonth() + 1 };
+    case '7days': {
+      const s = new Date(today); s.setDate(s.getDate() - 6);
+      return { start: fmt(s), end: fmt(today), year: today.getFullYear(), month: today.getMonth() + 1 };
+    }
+    case '15days': {
+      const s = new Date(today); s.setDate(s.getDate() - 14);
+      return { start: fmt(s), end: fmt(today), year: today.getFullYear(), month: today.getMonth() + 1 };
+    }
+    case 'month':
+      return { start: null, end: null, year: today.getFullYear(), month: today.getMonth() + 1 };
+    case 'last_month': {
+      const d = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      return { start: null, end: null, year: d.getFullYear(), month: d.getMonth() + 1 };
+    }
+    case 'custom': {
+      if (customStart && customEnd) {
+        const d = new Date(customStart + 'T12:00:00');
+        return { start: customStart, end: customEnd, year: d.getFullYear(), month: d.getMonth() + 1 };
+      }
+      return { start: null, end: null, year: today.getFullYear(), month: today.getMonth() + 1 };
+    }
+    default:
+      return { start: null, end: null, year: today.getFullYear(), month: today.getMonth() + 1 };
+  }
+}
 
 function TransactionDetail({ transaction: t, onClose, onDelete }) {
   return (
@@ -62,11 +103,12 @@ function Row({ label, value }) {
   );
 }
 
-function applyFilters(data, search, categoryId) {
-  if (!search && !categoryId) return data;
+function applyFilters(data, search, categoryId, startDate, endDate) {
   const q = search.toLowerCase().trim();
   const filtered = {};
   for (const [key, day] of Object.entries(data)) {
+    if (startDate && key < startDate) continue;
+    if (endDate && key > endDate) continue;
     const txs = day.transactions.filter(t => {
       const matchSearch = !q || t.description?.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q);
       const catId = Number(categoryId);
@@ -94,6 +136,14 @@ export default function CalendarPage() {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [periodMode, setPeriodMode] = useState('month');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  const periodRange = useMemo(
+    () => getPeriodRange(periodMode, customStart, customEnd),
+    [periodMode, customStart, customEnd]
+  );
 
   const load = async (y, m) => {
     setLoading(true);
@@ -102,15 +152,34 @@ export default function CalendarPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(year, month); }, [year, month]);
+  // Quando o período muda, navega para o mês correspondente
+  useEffect(() => {
+    const y = periodRange.year;
+    const m = periodRange.month;
+    setYear(y);
+    setMonth(m);
+    setSelectedDay(null);
+    setSelectedTransaction(null);
+    load(y, m);
+  }, [periodRange.year, periodRange.month]);
 
   useEffect(() => {
     api.get('/categories').then(({ data }) => setCategories(data)).catch(() => {});
   }, []);
 
-  const filteredData = useMemo(() => applyFilters(data, search, categoryId || null), [data, search, categoryId]);
+  const filteredData = useMemo(
+    () => applyFilters(data, search, categoryId || null, periodRange.start, periodRange.end),
+    [data, search, categoryId, periodRange]
+  );
 
-  const handleMonthChange = (y, m) => { setYear(y); setMonth(m); setSelectedDay(null); setSelectedTransaction(null); };
+  const handleMonthChange = (y, m) => {
+    setYear(y); setMonth(m);
+    setSelectedDay(null); setSelectedTransaction(null);
+    // Ao navegar manualmente, volta para "Este mês" se necessário
+    setPeriodMode('month');
+    setCustomStart(''); setCustomEnd('');
+    load(y, m);
+  };
 
   const handleDayClick = (key, dayData) => {
     setSelectedDay({ key, ...dayData });
@@ -140,50 +209,84 @@ export default function CalendarPage() {
     load(year, month);
   };
 
+  const handlePeriodChange = (key) => {
+    setPeriodMode(key);
+    if (key !== 'custom') { setCustomStart(''); setCustomEnd(''); }
+    setSelectedDay(null); setSelectedTransaction(null);
+  };
+
   const hasFilters = search || categoryId;
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Calendário</h1>
 
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Buscar lançamento..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setSelectedDay(null); setSelectedTransaction(null); }}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white"
-          />
+      {/* Filtro de período */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3">
+        <div className="flex flex-wrap gap-1.5">
+          {PERIOD_PRESETS.map(p => (
+            <button key={p.key} onClick={() => handlePeriodChange(p.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
+                ${periodMode === p.key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              {p.label}
+            </button>
+          ))}
         </div>
-        <select
-          value={categoryId}
-          onChange={e => { setCategoryId(e.target.value); setSelectedDay(null); setSelectedTransaction(null); }}
-          className="sm:w-52 px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white"
-        >
-          <option value="">Todas as categorias</option>
-          {categories.filter(c => !c.parent_id).map(parent => {
-            const subs = categories.filter(c => String(c.parent_id) === String(parent.id));
-            return subs.length > 0 ? (
-              <optgroup key={parent.id} label={parent.name}>
-                <option value={parent.id}>{parent.name}</option>
-                {subs.map(c => <option key={c.id} value={c.id}>↳ {c.name}</option>)}
-              </optgroup>
-            ) : (
-              <option key={parent.id} value={parent.id}>{parent.name}</option>
-            );
-          })}
-        </select>
-        {hasFilters && (
-          <button
-            onClick={() => { setSearch(''); setCategoryId(''); setSelectedDay(null); setSelectedTransaction(null); }}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-colors bg-white whitespace-nowrap"
-          >
-            <X size={14} /> Limpar
-          </button>
+
+        {periodMode === 'custom' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar size={14} className="text-slate-400 flex-shrink-0" />
+            <input type="date"
+              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={customStart} onChange={e => setCustomStart(e.target.value)} />
+            <span className="text-slate-400 text-sm">até</span>
+            <input type="date"
+              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={customEnd} onChange={e => setCustomEnd(e.target.value)} />
+          </div>
         )}
+
+        {/* Busca e categoria */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar lançamento..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setSelectedDay(null); setSelectedTransaction(null); }}
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white"
+            />
+          </div>
+          <select
+            value={categoryId}
+            onChange={e => { setCategoryId(e.target.value); setSelectedDay(null); setSelectedTransaction(null); }}
+            className="sm:w-52 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white"
+          >
+            <option value="">Todas as categorias</option>
+            {categories.filter(c => !c.parent_id).map(parent => {
+              const subs = categories.filter(c => String(c.parent_id) === String(parent.id));
+              return subs.length > 0 ? (
+                <optgroup key={parent.id} label={parent.name}>
+                  <option value={parent.id}>{parent.name}</option>
+                  {subs.map(c => <option key={c.id} value={c.id}>↳ {c.name}</option>)}
+                </optgroup>
+              ) : (
+                <option key={parent.id} value={parent.id}>{parent.name}</option>
+              );
+            })}
+          </select>
+          {hasFilters && (
+            <button
+              onClick={() => { setSearch(''); setCategoryId(''); setSelectedDay(null); setSelectedTransaction(null); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-colors bg-white whitespace-nowrap"
+            >
+              <X size={14} /> Limpar
+            </button>
+          )}
+        </div>
       </div>
 
       {loading && <p className="text-slate-400 text-sm">Carregando...</p>}

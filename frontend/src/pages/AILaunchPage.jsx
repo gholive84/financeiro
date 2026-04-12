@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Loader2, CheckCircle, Send, Type } from 'lucide-react';
+import { Mic, MicOff, Loader2, CheckCircle, Send, Type, Wallet, CreditCard } from 'lucide-react';
 import api from '../services/api';
 import { useApp } from '../context/AppContext';
 
@@ -13,13 +13,28 @@ export default function AILaunchPage() {
   const [transaction, setTransaction] = useState(null);
   const [error, setError] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
+  // pré-seleção: 'account_ID' ou 'card_ID' ou ''
+  const [preSelected, setPreSelected] = useState('');
   const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
 
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
 
-  useEffect(() => { loadCategories(); loadAccounts(); loadCreditCards(); }, []);
+  useEffect(() => {
+    loadCategories();
+    loadAccounts();
+    loadCreditCards();
+  }, []);
+
+  // Auto-seleciona o padrão quando as listas carregarem
+  useEffect(() => {
+    if (preSelected) return; // não sobrescreve seleção manual
+    const defCard = creditCards.find(c => c.is_default);
+    const defAccount = accounts.find(a => a.is_default);
+    if (defCard) setPreSelected(`card_${defCard.id}`);
+    else if (defAccount) setPreSelected(`account_${defAccount.id}`);
+  }, [accounts, creditCards]);
 
   useEffect(() => {
     if (step === STEPS.recording) {
@@ -38,6 +53,32 @@ export default function AILaunchPage() {
     if (k === 'date') updated.status = v <= todayStr() ? 'paid' : 'pending';
     return updated;
   });
+
+  // Aplica a pré-seleção à transação recebida da IA (sempre sobrescreve)
+  const applyPreSelected = (tx) => {
+    if (!preSelected) return tx;
+    if (preSelected.startsWith('account_')) {
+      return { ...tx, account_id: parseInt(preSelected.replace('account_', '')), credit_card_id: null };
+    }
+    if (preSelected.startsWith('card_')) {
+      return { ...tx, credit_card_id: parseInt(preSelected.replace('card_', '')), account_id: null };
+    }
+    return tx;
+  };
+
+  // Descrição amigável do pré-selecionado
+  const preSelectedLabel = () => {
+    if (!preSelected) return null;
+    if (preSelected.startsWith('account_')) {
+      const a = accounts.find(a => a.id === parseInt(preSelected.replace('account_', '')));
+      return a ? { name: a.name, color: a.color, icon: 'account' } : null;
+    }
+    if (preSelected.startsWith('card_')) {
+      const c = creditCards.find(c => c.id === parseInt(preSelected.replace('card_', '')));
+      return c ? { name: c.name, color: c.color, icon: 'card' } : null;
+    }
+    return null;
+  };
 
   // --- VOZ ---
   const startRecording = async () => {
@@ -70,7 +111,7 @@ export default function AILaunchPage() {
       formData.append('audio', blob, 'audio.webm');
       const { data } = await api.post('/ai/transcribe', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setTranscript(data.transcript);
-      setTransaction(data.transaction);
+      setTransaction(applyPreSelected(data.transaction));
       setStep(STEPS.review);
     } catch {
       setError('Erro ao processar o áudio. Tente novamente.');
@@ -85,7 +126,7 @@ export default function AILaunchPage() {
     try {
       const { data } = await api.post('/ai/text', { text: textInput });
       setTranscript(textInput);
-      setTransaction(data.transaction);
+      setTransaction(applyPreSelected(data.transaction));
       setStep(STEPS.review);
     } catch {
       setError('Erro ao processar. Tente novamente.');
@@ -121,6 +162,8 @@ export default function AILaunchPage() {
     'Comprei TV 1800 reais em 6x no cartão Bradesco',
   ];
 
+  const label = preSelectedLabel();
+
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <div>
@@ -131,13 +174,53 @@ export default function AILaunchPage() {
       {/* Toggle modo */}
       {step === STEPS.idle && (
         <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white">
-          {[['voice', Mic, 'Voz'], ['text', Type, 'Texto']].map(([m, Icon, label]) => (
+          {[['voice', Mic, 'Voz'], ['text', Type, 'Texto']].map(([m, Icon, lbl]) => (
             <button key={m} onClick={() => setMode(m)}
               className={`flex-1 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition-colors
                 ${mode === m ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <Icon size={15} /> {label}
+              <Icon size={15} /> {lbl}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Seletor de conta/cartão pré-selecionado */}
+      {step === STEPS.idle && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-2">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Lançar em</label>
+          <select
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={preSelected}
+            onChange={e => setPreSelected(e.target.value)}
+          >
+            <option value="">Detectar automaticamente pela IA</option>
+            {accounts.length > 0 && (
+              <optgroup label="Contas">
+                {accounts.map(a => (
+                  <option key={`account_${a.id}`} value={`account_${a.id}`}>
+                    {a.name}{a.is_default ? ' ★' : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {creditCards.length > 0 && (
+              <optgroup label="Cartões de Crédito">
+                {creditCards.map(c => (
+                  <option key={`card_${c.id}`} value={`card_${c.id}`}>
+                    {c.name}{c.bank ? ` · ${c.bank}` : ''}{c.is_default ? ' ★' : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          {label && (
+            <div className="flex items-center gap-2 px-1">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
+              <span className="text-xs text-slate-500">
+                {label.icon === 'card' ? 'Cartão' : 'Conta'} <strong>{label.name}</strong> pré-selecionado
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -255,18 +338,24 @@ export default function AILaunchPage() {
             </select>
 
             <div className="grid grid-cols-2 gap-3">
-              <select className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={transaction.account_id || ''} disabled={!!transaction.credit_card_id}
-                onChange={e => { set('account_id', e.target.value || null); if (e.target.value) { set('credit_card_id', null); set('installments', 1); } }}>
-                <option value="">Conta</option>
-                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-              <select className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={transaction.credit_card_id || ''} disabled={!!transaction.account_id}
-                onChange={e => { set('credit_card_id', e.target.value || null); if (e.target.value) set('account_id', null); }}>
-                <option value="">Cartão</option>
-                {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Wallet size={11} /> Conta</label>
+                <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={transaction.account_id || ''} disabled={!!transaction.credit_card_id}
+                  onChange={e => { set('account_id', e.target.value || null); if (e.target.value) { set('credit_card_id', null); set('installments', 1); } }}>
+                  <option value="">Nenhuma</option>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}{a.is_default ? ' ★' : ''}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 flex items-center gap-1"><CreditCard size={11} /> Cartão</label>
+                <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={transaction.credit_card_id || ''} disabled={!!transaction.account_id}
+                  onChange={e => { set('credit_card_id', e.target.value || null); if (e.target.value) set('account_id', null); }}>
+                  <option value="">Nenhum</option>
+                  {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}{c.is_default ? ' ★' : ''}</option>)}
+                </select>
+              </div>
             </div>
 
             {transaction.credit_card_id && (

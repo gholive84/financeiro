@@ -1,10 +1,48 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Trash2, Pencil, X, CheckSquare } from 'lucide-react';
+import { Plus, Search, Trash2, Pencil, X, CheckSquare, Calendar } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/shared/Modal';
 import TransactionForm from '../components/Transactions/TransactionForm';
 import TransactionList from '../components/Transactions/TransactionList';
 import { useApp } from '../context/AppContext';
+
+// --- Utilitário de períodos ---
+const PERIOD_PRESETS = [
+  { key: 'today',      label: 'Hoje' },
+  { key: 'month',      label: 'Este mês' },
+  { key: 'last_month', label: 'Mês anterior' },
+  { key: 'custom',     label: 'Personalizado' },
+];
+
+function getPeriodParams(mode, customStart, customEnd) {
+  const today = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+
+  switch (mode) {
+    case 'today':
+      return { start_date: fmt(today), end_date: fmt(today) };
+    case '7days': {
+      const s = new Date(today); s.setDate(s.getDate() - 6);
+      return { start_date: fmt(s), end_date: fmt(today) };
+    }
+    case '15days': {
+      const s = new Date(today); s.setDate(s.getDate() - 14);
+      return { start_date: fmt(s), end_date: fmt(today) };
+    }
+    case 'month':
+      return { month: today.getMonth() + 1, year: today.getFullYear() };
+    case 'last_month': {
+      const d = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      return { month: d.getMonth() + 1, year: d.getFullYear() };
+    }
+    case 'custom':
+      return customStart && customEnd
+        ? { start_date: customStart, end_date: customEnd }
+        : { month: today.getMonth() + 1, year: today.getFullYear() };
+    default:
+      return { month: today.getMonth() + 1, year: today.getFullYear() };
+  }
+}
 
 function TransactionDetail({ t, onClose, onEdit, onDelete }) {
   function Row({ label, value }) {
@@ -59,13 +97,15 @@ function TransactionDetail({ t, onClose, onEdit, onDelete }) {
 }
 
 export default function TransactionsPage() {
-  const now = new Date();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [filters, setFilters] = useState({ month: now.getMonth() + 1, year: now.getFullYear(), type: '', status: '', category_id: '' });
+  const [periodMode, setPeriodMode] = useState('month');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [filters, setFilters] = useState({ type: '', status: '', category_id: '' });
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkApplying, setBulkApplying] = useState(false);
@@ -75,15 +115,16 @@ export default function TransactionsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (filters.month) params.set('month', filters.month);
-    if (filters.year) params.set('year', filters.year);
+    const period = getPeriodParams(periodMode, customStart, customEnd);
+    if (period.start_date) { params.set('start_date', period.start_date); params.set('end_date', period.end_date); }
+    else if (period.month) { params.set('month', period.month); params.set('year', period.year); }
     if (filters.type) params.set('type', filters.type);
     if (filters.status) params.set('status', filters.status);
     if (filters.category_id) params.set('category_id', filters.category_id);
     const { data } = await api.get(`/transactions?${params}`);
     setTransactions(data);
     setLoading(false);
-  }, [filters]);
+  }, [periodMode, customStart, customEnd, filters]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -105,6 +146,7 @@ export default function TransactionsPage() {
       setBulkApplying(false);
     }
   };
+
   const handleDelete = async (id) => {
     const t = transactions.find(t => t.id === id);
     const isInstallment = t?.installment_total > 1 && t?.installment_group_id;
@@ -113,7 +155,6 @@ export default function TransactionsPage() {
       const deleteAll = window.confirm(
         `Parcela ${t.installment_current}/${t.installment_total} — "${t.description}"\n\nOK = Excluir TODAS as ${t.installment_total} parcelas\nCancelar = Excluir só esta parcela`
       );
-      // deleteAll = true → todas | false → só esta (ambos confirmam a exclusão)
       await api.delete(`/transactions/${id}${deleteAll ? '?all=true' : ''}`);
     } else {
       if (!confirm('Deletar esta transação?')) return;
@@ -122,12 +163,14 @@ export default function TransactionsPage() {
     load();
   };
 
-  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
-
   const filtered = transactions.filter(t =>
     !search || t.description.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handlePeriodChange = (key) => {
+    setPeriodMode(key);
+    if (key !== 'custom') { setCustomStart(''); setCustomEnd(''); }
+  };
 
   return (
     <div className="space-y-6">
@@ -141,8 +184,37 @@ export default function TransactionsPage() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-4">
+      {/* Filtros */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3">
+
+        {/* Filtro de período */}
+        <div className="flex flex-wrap gap-1.5">
+          {PERIOD_PRESETS.map(p => (
+            <button key={p.key} onClick={() => handlePeriodChange(p.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
+                ${periodMode === p.key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Datas personalizadas */}
+        {periodMode === 'custom' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar size={14} className="text-slate-400 flex-shrink-0" />
+            <input type="date"
+              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={customStart} onChange={e => setCustomStart(e.target.value)} />
+            <span className="text-slate-400 text-sm">até</span>
+            <input type="date"
+              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={customEnd} onChange={e => setCustomEnd(e.target.value)} />
+          </div>
+        )}
+
+        {/* Demais filtros */}
         <div className="flex flex-wrap gap-3">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -152,18 +224,6 @@ export default function TransactionsPage() {
               value={search} onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <select
-            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={filters.month} onChange={e => setFilters(f => ({ ...f, month: e.target.value }))}
-          >
-            {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-          </select>
-          <select
-            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={filters.year} onChange={e => setFilters(f => ({ ...f, year: e.target.value }))}
-          >
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
           <select
             className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}
@@ -223,7 +283,6 @@ export default function TransactionsPage() {
             {selectedIds.length} selecionada{selectedIds.length > 1 ? 's' : ''}
           </span>
           <div className="flex gap-2 flex-1 flex-wrap">
-            {/* Categoria */}
             <select disabled={bulkApplying}
               className="border border-blue-400 bg-blue-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none flex-1 min-w-[150px] disabled:opacity-60"
               onChange={e => { if (e.target.value !== '') { handleBulkApply('category_id', e.target.value); e.target.value = ''; } }}>
@@ -237,7 +296,6 @@ export default function TransactionsPage() {
               </optgroup>
             </select>
 
-            {/* Cartão */}
             <select disabled={bulkApplying}
               className="border border-blue-400 bg-blue-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none flex-1 min-w-[150px] disabled:opacity-60"
               onChange={e => { if (e.target.value !== '') { handleBulkApply('credit_card_id', e.target.value); e.target.value = ''; } }}>
@@ -246,7 +304,6 @@ export default function TransactionsPage() {
               {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}{c.bank ? ` · ${c.bank}` : ''}</option>)}
             </select>
 
-            {/* Conta */}
             <select disabled={bulkApplying}
               className="border border-blue-400 bg-blue-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none flex-1 min-w-[150px] disabled:opacity-60"
               onChange={e => { if (e.target.value !== '') { handleBulkApply('account_id', e.target.value); e.target.value = ''; } }}>
@@ -266,7 +323,6 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* Dica quando nada selecionado */}
       {selectedIds.length === 0 && !loading && filtered.length > 0 && (
         <p className="text-xs text-slate-400 text-right -mt-2">
           Clique em <CheckSquare size={11} className="inline" /> para selecionar transações em massa

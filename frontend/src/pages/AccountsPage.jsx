@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Wallet } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wallet, Star } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/shared/Modal';
 
 const typeLabels = { debit: 'Conta Corrente', cash: 'Dinheiro', pix: 'PIX' };
-const emptyAccount = { name: '', type: 'debit', balance: '', color: '#6366F1', icon: '' };
+const emptyAccount = { name: '', type: 'debit', balance: '', color: '#6366F1', icon: '', is_default: false };
 
 function AccountForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = useState(initial ? { ...initial, balance: String(initial.balance) } : emptyAccount);
+  const [form, setForm] = useState(initial
+    ? { ...initial, balance: String(initial.balance), is_default: !!initial.is_default }
+    : emptyAccount);
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -47,6 +49,18 @@ function AccountForm({ initial, onSave, onCancel }) {
             value={form.color} onChange={e => set('color', e.target.value)} />
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => set('is_default', !form.is_default)}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors
+          ${form.is_default
+            ? 'border-amber-300 bg-amber-50 text-amber-700'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+      >
+        <Star size={15} className={form.is_default ? 'fill-amber-400 text-amber-400' : 'text-slate-400'} />
+        {form.is_default ? 'Conta padrão (pré-selecionada no lançamento com IA)' : 'Definir como conta padrão'}
+      </button>
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
@@ -102,14 +116,21 @@ export default function AccountsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {accounts.map(a => (
-            <div key={a.id} className="bg-white rounded-2xl border border-slate-100 p-5">
+            <div key={a.id} className={`bg-white rounded-2xl border p-5 ${a.is_default ? 'border-amber-200' : 'border-slate-100'}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: a.color + '22' }}>
                     <Wallet size={18} style={{ color: a.color }} />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800">{a.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-semibold text-slate-800">{a.name}</p>
+                      {a.is_default && (
+                        <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                          <Star size={9} className="fill-amber-500 text-amber-500" /> Padrão
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-400">{typeLabels[a.type]}</p>
                   </div>
                 </div>

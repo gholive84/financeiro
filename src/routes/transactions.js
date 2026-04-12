@@ -60,11 +60,14 @@ function formatTransaction(row) {
 // GET /api/transactions
 router.get('/', async (req, res, next) => {
   try {
-    const { month, year, type, account_id, credit_card_id, status } = req.query;
+    const { month, year, type, account_id, credit_card_id, status, start_date, end_date } = req.query;
     let sql = transactionSelect + ' WHERE 1=1';
     const params = [];
 
-    if (month && year) {
+    if (start_date && end_date) {
+      sql += ' AND t.date >= ? AND t.date <= ?';
+      params.push(start_date, end_date);
+    } else if (month && year) {
       sql += ' AND MONTH(t.date) = ? AND YEAR(t.date) = ?';
       params.push(month, year);
     }
