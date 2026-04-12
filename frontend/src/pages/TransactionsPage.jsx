@@ -9,8 +9,6 @@ import { useApp } from '../context/AppContext';
 // --- Utilitário de períodos ---
 const PERIOD_PRESETS = [
   { key: 'today',      label: 'Hoje' },
-  { key: '7days',      label: '7 dias' },
-  { key: '15days',     label: '15 dias' },
   { key: 'month',      label: 'Este mês' },
   { key: 'last_month', label: 'Mês anterior' },
   { key: 'custom',     label: 'Personalizado' },
