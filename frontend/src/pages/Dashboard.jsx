@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Wallet, ArrowRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import ProgressBar from '../components/shared/ProgressBar';
+import ExpensesChart from '../components/Dashboard/ExpensesChart';
 
 function StatCard({ label, value, icon: Icon, color, sub }) {
   return (
@@ -130,6 +131,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Expenses Chart */}
+      <ExpensesChart />
 
       {/* Recent */}
       {data.recent_transactions.length > 0 && (

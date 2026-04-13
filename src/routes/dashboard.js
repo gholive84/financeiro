@@ -79,4 +79,34 @@ router.get('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/dashboard/expenses-chart?month=4&year=2026
+router.get('/expenses-chart', async (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const now = new Date();
+    const month = parseInt(req.query.month) || (now.getMonth() + 1);
+    const year = parseInt(req.query.year) || now.getFullYear();
+
+    const [rows] = await db.query(`
+      SELECT
+        COALESCE(c.name, 'Sem categoria') as category,
+        COALESCE(c.color, '#94a3b8') as color,
+        COALESCE(SUM(t.amount), 0) as total
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.type = 'expense'
+        AND t.status = 'paid'
+        AND MONTH(t.date) = ?
+        AND YEAR(t.date) = ?
+      GROUP BY t.category_id, c.name, c.color
+      ORDER BY total DESC
+    `, [month, year]);
+
+    res.json({
+      month, year,
+      data: rows.map(r => ({ category: r.category, color: r.color, total: parseFloat(r.total) })),
+    });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
