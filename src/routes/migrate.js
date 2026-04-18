@@ -19,6 +19,33 @@ router.get('/', async (req, res) => {
       name: '011 — is_default em credit_cards',
       sql: "ALTER TABLE credit_cards ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT FALSE",
     },
+    {
+      name: '012 — tabela tags',
+      sql: `CREATE TABLE IF NOT EXISTS tags (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(50) NOT NULL,
+        color VARCHAR(7) DEFAULT '#6366F1',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+    },
+    {
+      name: '012 — tabela transaction_tags',
+      sql: `CREATE TABLE IF NOT EXISTS transaction_tags (
+        transaction_id INT NOT NULL,
+        tag_id INT NOT NULL,
+        PRIMARY KEY (transaction_id, tag_id),
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+      )`,
+    },
+    {
+      name: '013 — expense_nature em transactions',
+      sql: "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expense_nature ENUM('fixed','variable') DEFAULT NULL",
+    },
+    {
+      name: '013 — fixed_group_id em transactions',
+      sql: "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS fixed_group_id VARCHAR(36) DEFAULT NULL",
+    },
   ];
 
   const results = [];

@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, ArrowLeftRight, CreditCard,
   PieChart, PiggyBank, Wallet, Tag, Sparkles, Users, LogOut, X, Shield, User, Upload,
+  TrendingUp, Hash,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -11,9 +12,11 @@ const nav = [
   { to: '/ai', icon: Sparkles, label: 'Lançar com IA', highlight: true },
   { to: '/calendar', icon: Calendar, label: 'Calendário' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
+  { to: '/flow', icon: TrendingUp, label: 'Fluxo Mensal' },
   { to: '/accounts', icon: Wallet, label: 'Contas' },
   { to: '/credit-cards', icon: CreditCard, label: 'Cartões' },
   { to: '/categories', icon: Tag, label: 'Categorias' },
+  { to: '/tags', icon: Hash, label: 'Tags' },
   { to: '/budget', icon: PieChart, label: 'Orçamento' },
   { to: '/savings', icon: PiggyBank, label: 'Caixinhas' },
   { to: '/import', icon: Upload, label: 'Importar' },

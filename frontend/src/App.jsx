@@ -16,6 +16,8 @@ import SavingsPage from './pages/SavingsPage';
 import AILaunchPage from './pages/AILaunchPage';
 import UsersPage from './pages/UsersPage';
 import ImportPage from './pages/ImportPage';
+import TagsPage from './pages/TagsPage';
+import FlowPage from './pages/FlowPage';
 
 function AppLayout() {
   const { user, loading } = useAuth();
@@ -56,6 +58,8 @@ function AppLayout() {
                 <Route path="/savings" element={<SavingsPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/import" element={<ImportPage />} />
+                <Route path="/tags" element={<TagsPage />} />
+                <Route path="/flow" element={<FlowPage />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </div>

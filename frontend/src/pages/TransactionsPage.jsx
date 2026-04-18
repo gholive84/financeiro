@@ -150,10 +150,16 @@ export default function TransactionsPage() {
   const handleDelete = async (id) => {
     const t = transactions.find(t => t.id === id);
     const isInstallment = t?.installment_total > 1 && t?.installment_group_id;
+    const isFixed = t?.expense_nature === 'fixed' && t?.fixed_group_id;
 
     if (isInstallment) {
       const deleteAll = window.confirm(
         `Parcela ${t.installment_current}/${t.installment_total} — "${t.description}"\n\nOK = Excluir TODAS as ${t.installment_total} parcelas\nCancelar = Excluir só esta parcela`
+      );
+      await api.delete(`/transactions/${id}${deleteAll ? '?all=true' : ''}`);
+    } else if (isFixed) {
+      const deleteAll = window.confirm(
+        `Despesa fixa — "${t.description}"\n\nOK = Excluir TODAS as ocorrências desta despesa fixa\nCancelar = Excluir só este mês`
       );
       await api.delete(`/transactions/${id}${deleteAll ? '?all=true' : ''}`);
     } else {

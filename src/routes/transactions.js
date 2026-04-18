@@ -30,6 +30,8 @@ function formatTransaction(row) {
     notes: row.notes,
     is_recurring: row.is_recurring,
     recurring_template_id: row.recurring_template_id,
+    expense_nature: row.expense_nature || null,
+    fixed_group_id: row.fixed_group_id || null,
     category: row.category_id ? {
       id: row.category_id,
       name: row.category_name,
@@ -54,7 +56,39 @@ function formatTransaction(row) {
     installment_total: row.installment_total || null,
     installment_current: row.installment_current || null,
     installment_group_id: row.installment_group_id || null,
+    tags: [],
   };
+}
+
+async function attachTags(transactions) {
+  if (!transactions.length) return transactions;
+  const ids = transactions.map(t => t.id);
+  try {
+    const placeholders = ids.map(() => '?').join(',');
+    const [tagRows] = await db.query(
+      `SELECT tt.transaction_id, tg.id, tg.name, tg.color
+       FROM transaction_tags tt JOIN tags tg ON tt.tag_id = tg.id
+       WHERE tt.transaction_id IN (${placeholders})`,
+      ids
+    );
+    const map = {};
+    for (const tr of tagRows) {
+      if (!map[tr.transaction_id]) map[tr.transaction_id] = [];
+      map[tr.transaction_id].push({ id: tr.id, name: tr.name, color: tr.color });
+    }
+    return transactions.map(t => ({ ...t, tags: map[t.id] || [] }));
+  } catch {
+    return transactions; // tags table may not exist yet
+  }
+}
+
+async function setTags(transactionId, tagIds) {
+  try {
+    await db.query('DELETE FROM transaction_tags WHERE transaction_id = ?', [transactionId]);
+    for (const tagId of (tagIds || [])) {
+      await db.query('INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)', [transactionId, tagId]);
+    }
+  } catch { /* tags table may not exist yet */ }
 }
 
 // GET /api/transactions
@@ -76,10 +110,12 @@ router.get('/', async (req, res, next) => {
     if (credit_card_id) { sql += ' AND t.credit_card_id = ?'; params.push(credit_card_id); }
     if (status) { sql += ' AND t.status = ?'; params.push(status); }
     if (req.query.category_id) { sql += ' AND (t.category_id = ? OR t.category_id IN (SELECT id FROM categories WHERE parent_id = ?))'; params.push(req.query.category_id, req.query.category_id); }
+    if (req.query.tag_id) { sql += ' AND t.id IN (SELECT transaction_id FROM transaction_tags WHERE tag_id = ?)'; params.push(req.query.tag_id); }
 
     sql += ' ORDER BY t.date DESC, t.created_at DESC';
     const [rows] = await db.query(sql, params);
-    res.json(rows.map(formatTransaction));
+    const formatted = rows.map(formatTransaction);
+    res.json(await attachTags(formatted));
   } catch (err) { next(err); }
 });
 
@@ -90,19 +126,20 @@ router.get('/calendar/:year/:month', async (req, res, next) => {
     const sql = transactionSelect + ' WHERE YEAR(t.date) = ? AND MONTH(t.date) = ? ORDER BY t.date, t.created_at';
     const [rows] = await db.query(sql, [year, month]);
 
+    const formatted = await attachTags(rows.map(formatTransaction));
+
     const calendar = {};
-    for (const row of rows) {
-      const dateKey = row.date instanceof Date
-        ? row.date.toISOString().split('T')[0]
-        : String(row.date).split('T')[0];
+    for (const tx of formatted) {
+      const dateKey = tx.date instanceof Date
+        ? tx.date.toISOString().split('T')[0]
+        : String(tx.date).split('T')[0];
 
       if (!calendar[dateKey]) {
         calendar[dateKey] = { total_income: 0, total_expense: 0, transactions: [] };
       }
-      const amount = parseFloat(row.amount);
-      if (row.type === 'income') calendar[dateKey].total_income += amount;
-      else calendar[dateKey].total_expense += amount;
-      calendar[dateKey].transactions.push(formatTransaction(row));
+      if (tx.type === 'income') calendar[dateKey].total_income += tx.amount;
+      else calendar[dateKey].total_expense += tx.amount;
+      calendar[dateKey].transactions.push(tx);
     }
     res.json(calendar);
   } catch (err) { next(err); }
@@ -111,15 +148,52 @@ router.get('/calendar/:year/:month', async (req, res, next) => {
 // POST /api/transactions
 router.post('/', async (req, res, next) => {
   try {
-    const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes, installments } = req.body;
+    const {
+      description, amount, date, type,
+      account_id, credit_card_id, category_id,
+      is_recurring, recurring_template_id,
+      status, notes, installments,
+      expense_nature, fixed_months,
+      tag_ids,
+    } = req.body;
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // --- DESPESA FIXA ---
+    if (expense_nature === 'fixed' && !credit_card_id) {
+      const numMonths = parseInt(fixed_months) || 12;
+      const groupId = uuidv4();
+      const [baseDate] = (date || todayStr).split('T');
+      const [y, m, d] = baseDate.split('-').map(Number);
+      const insertedIds = [];
+
+      for (let i = 0; i < numMonths; i++) {
+        const fixedDate = new Date(y, m - 1 + i, d);
+        const fixedDateStr = fixedDate.toISOString().split('T')[0];
+        const fixedStatus = fixedDateStr <= todayStr ? 'paid' : 'pending';
+        const [result] = await db.query(
+          `INSERT INTO transactions
+            (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, expense_nature, fixed_group_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fixed', ?)`,
+          [description, amount, fixedDateStr, type, account_id || null, null, category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId]
+        );
+        if (fixedStatus === 'paid' && account_id) {
+          const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
+          await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [delta, account_id]);
+        }
+        insertedIds.push(result.insertId);
+      }
+      await setTags(insertedIds[0], tag_ids);
+      const [rows] = await db.query(transactionSelect + ' WHERE t.id = ?', [insertedIds[0]]);
+      return res.status(201).json((await attachTags([formatTransaction(rows[0])]))[0]);
+    }
+
+    // --- PARCELADO ---
     const numInstallments = parseInt(installments) || 1;
-
-    // Parcelado: cria N transações
     if (numInstallments > 1 && credit_card_id) {
       const groupId = uuidv4();
       const installmentAmount = parseFloat((amount / numInstallments).toFixed(2));
-      const [baseDate] = date.split('T');
+      const [baseDate] = (date || todayStr).split('T');
       const [y, m, d] = baseDate.split('-').map(Number);
       const insertedIds = [];
 
@@ -134,60 +208,60 @@ router.post('/', async (req, res, next) => {
         );
         insertedIds.push(result.insertId);
       }
-
+      await setTags(insertedIds[0], tag_ids);
       const [rows] = await db.query(transactionSelect + ' WHERE t.id = ?', [insertedIds[0]]);
-      return res.status(201).json(formatTransaction(rows[0]));
+      return res.status(201).json((await attachTags([formatTransaction(rows[0])]))[0]);
     }
 
-    // Transação simples
+    // --- TRANSAÇÃO SIMPLES ---
     const [result] = await db.query(
-      `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes, user_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, recurring_template_id || null, status || 'paid', notes || null, req.user?.id || null]
+      `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes, user_id, expense_nature)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, recurring_template_id || null, status || 'paid', notes || null, req.user?.id || null, expense_nature || null]
     );
 
     if ((status === 'paid' || !status) && account_id) {
-      const delta = type === 'income' ? amount : -amount;
+      const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
       await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [delta, account_id]);
     }
 
+    await setTags(result.insertId, tag_ids);
     const [rows] = await db.query(transactionSelect + ' WHERE t.id = ?', [result.insertId]);
-    res.status(201).json(formatTransaction(rows[0]));
+    res.status(201).json((await attachTags([formatTransaction(rows[0])]))[0]);
   } catch (err) { next(err); }
 });
 
 // PUT /api/transactions/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, status, notes } = req.body;
+    const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, status, notes, expense_nature, tag_ids } = req.body;
 
-    // Revert old balance
     const [old] = await db.query('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
     if (!old.length) return res.status(404).json({ error: 'Transação não encontrada' });
     const prev = old[0];
 
     if (prev.status === 'paid' && prev.account_id) {
-      const revert = prev.type === 'income' ? -prev.amount : parseFloat(prev.amount);
+      const revert = prev.type === 'income' ? -parseFloat(prev.amount) : parseFloat(prev.amount);
       await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, prev.account_id]);
     }
 
     await db.query(
-      `UPDATE transactions SET description=?, amount=?, date=?, type=?, account_id=?, credit_card_id=?, category_id=?, is_recurring=?, status=?, notes=? WHERE id=?`,
-      [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, status || 'paid', notes || null, req.params.id]
+      `UPDATE transactions SET description=?, amount=?, date=?, type=?, account_id=?, credit_card_id=?, category_id=?, is_recurring=?, status=?, notes=?, expense_nature=? WHERE id=?`,
+      [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, status || 'paid', notes || null, expense_nature || null, req.params.id]
     );
 
-    // Apply new balance
     if ((status === 'paid' || !status) && account_id) {
-      const delta = type === 'income' ? amount : -amount;
+      const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
       await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [delta, account_id]);
     }
 
+    await setTags(req.params.id, tag_ids);
     const [rows] = await db.query(transactionSelect + ' WHERE t.id = ?', [req.params.id]);
-    res.json(formatTransaction(rows[0]));
+    res.json((await attachTags([formatTransaction(rows[0])]))[0]);
   } catch (err) { next(err); }
 });
 
-// PATCH /api/transactions/bulk — atualiza campos em lote (categoria, conta, cartão)
+// PATCH /api/transactions/bulk
 router.patch('/bulk', async (req, res, next) => {
   try {
     const { ids, category_id, account_id, credit_card_id } = req.body;
@@ -208,27 +282,31 @@ router.patch('/bulk', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /api/transactions/:id?all=true (deleta todas as parcelas do grupo)
+// DELETE /api/transactions/:id
+// ?all=true → deleta grupo (parcelas ou despesas fixas)
 router.delete('/:id', async (req, res, next) => {
   try {
     const [old] = await db.query('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
     if (!old.length) return res.status(404).json({ error: 'Transação não encontrada' });
     const prev = old[0];
 
-    if (req.query.all === 'true' && prev.installment_group_id) {
-      // Deleta todas as parcelas do grupo
-      const [group] = await db.query('SELECT * FROM transactions WHERE installment_group_id = ?', [prev.installment_group_id]);
-      for (const t of group) {
-        if (t.status === 'paid' && t.account_id) {
-          const revert = t.type === 'income' ? -parseFloat(t.amount) : parseFloat(t.amount);
-          await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, t.account_id]);
+    if (req.query.all === 'true') {
+      const groupId = prev.installment_group_id || prev.fixed_group_id;
+      const groupCol = prev.installment_group_id ? 'installment_group_id' : 'fixed_group_id';
+
+      if (groupId) {
+        const [group] = await db.query(`SELECT * FROM transactions WHERE ${groupCol} = ?`, [groupId]);
+        for (const t of group) {
+          if (t.status === 'paid' && t.account_id) {
+            const revert = t.type === 'income' ? -parseFloat(t.amount) : parseFloat(t.amount);
+            await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, t.account_id]);
+          }
         }
+        await db.query(`DELETE FROM transactions WHERE ${groupCol} = ?`, [groupId]);
+        return res.json({ message: 'Grupo deletado', deleted: group.length });
       }
-      await db.query('DELETE FROM transactions WHERE installment_group_id = ?', [prev.installment_group_id]);
-      return res.json({ message: 'Todas as parcelas deletadas', deleted: group.length });
     }
 
-    // Deleta apenas esta parcela
     if (prev.status === 'paid' && prev.account_id) {
       const revert = prev.type === 'income' ? -parseFloat(prev.amount) : parseFloat(prev.amount);
       await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, prev.account_id]);

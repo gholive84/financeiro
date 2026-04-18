@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import api from '../../services/api';
+import { Tag, RepeatIcon } from 'lucide-react';
 
 const today = () => new Date().toISOString().split('T')[0];
 const statusForDate = (date) => date <= today() ? 'paid' : 'pending';
@@ -9,29 +10,46 @@ const empty = {
   description: '', amount: '', date: today(), type: 'expense',
   account_id: '', credit_card_id: '', category_id: '',
   status: 'paid', notes: '', is_recurring: false, installments: 1,
+  expense_nature: null, fixed_months: 12,
+  tag_ids: [],
 };
 
 export default function TransactionForm({ initial, onSave, onCancel }) {
   const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
   const [form, setForm] = useState(initial ? {
+    ...empty,
     ...initial,
     amount: String(initial.amount),
     date: String(initial.date).split('T')[0],
     account_id: initial.account?.id || '',
     credit_card_id: initial.credit_card?.id || '',
     category_id: initial.category?.id || '',
+    expense_nature: initial.expense_nature || null,
+    fixed_months: initial.fixed_months || 12,
+    tag_ids: (initial.tags || []).map(t => t.id),
   } : empty);
   const [loading, setLoading] = useState(false);
+  const [allTags, setAllTags] = useState([]);
 
   useEffect(() => {
     loadCategories(); loadAccounts(); loadCreditCards();
+    api.get('/tags').then(({ data }) => setAllTags(data)).catch(() => {});
   }, []);
 
   const set = (k, v) => setForm(f => {
     const updated = { ...f, [k]: v };
     if (k === 'date') updated.status = statusForDate(v);
+    if (k === 'type') updated.expense_nature = null; // reset fixed on type change
     return updated;
   });
+
+  const toggleTag = (id) => setForm(f => ({
+    ...f,
+    tag_ids: f.tag_ids.includes(id) ? f.tag_ids.filter(x => x !== id) : [...f.tag_ids, id],
+  }));
+
+  const isFixed = form.expense_nature === 'fixed';
+  const isNew = !initial?.id;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,6 +61,9 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         account_id: form.credit_card_id ? null : (form.account_id || null),
         credit_card_id: form.credit_card_id || null,
         category_id: form.category_id || null,
+        expense_nature: form.expense_nature || null,
+        fixed_months: isFixed ? parseInt(form.fixed_months) || 12 : undefined,
+        tag_ids: form.tag_ids,
       };
       if (initial?.id) {
         await api.put(`/transactions/${initial.id}`, payload);
@@ -50,7 +71,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         await api.post('/transactions', payload);
       }
       onSave();
-    } catch (err) {
+    } catch {
       alert('Erro ao salvar transação');
     } finally {
       setLoading(false);
@@ -123,7 +144,8 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
       <div className="grid grid-cols-2 gap-3">
         <select
           className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={form.account_id} onChange={e => { set('account_id', e.target.value); if (e.target.value) { set('credit_card_id', ''); set('installments', 1); } }}
+          value={form.account_id}
+          onChange={e => { set('account_id', e.target.value); if (e.target.value) { set('credit_card_id', ''); set('installments', 1); } }}
           disabled={!!form.credit_card_id}
         >
           <option value="">Conta</option>
@@ -131,7 +153,8 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         </select>
         <select
           className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={form.credit_card_id} onChange={e => { set('credit_card_id', e.target.value); if (e.target.value) set('account_id', ''); }}
+          value={form.credit_card_id}
+          onChange={e => { set('credit_card_id', e.target.value); if (e.target.value) { set('account_id', ''); set('expense_nature', null); } }}
           disabled={!!form.account_id}
         >
           <option value="">Cartão de crédito</option>
@@ -139,8 +162,8 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         </select>
       </div>
 
-      {/* Parcelas — só aparece com cartão de crédito */}
-      {form.credit_card_id && !initial?.id && (
+      {/* Parcelas — só com cartão, só ao criar */}
+      {form.credit_card_id && isNew && (
         <div>
           <label className="text-xs text-slate-500 mb-1 block">Parcelas</label>
           <select
@@ -159,6 +182,48 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         </div>
       )}
 
+      {/* Despesa fixa — só em despesas sem cartão, só ao criar */}
+      {form.type === 'expense' && !form.credit_card_id && isNew && (
+        <div className={`rounded-xl border p-3 space-y-3 transition-colors ${isFixed ? 'border-violet-200 bg-violet-50' : 'border-slate-200'}`}>
+          <button type="button" onClick={() => set('expense_nature', isFixed ? null : 'fixed')}
+            className="flex items-center gap-2 w-full text-left">
+            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isFixed ? 'bg-violet-600 border-violet-600' : 'border-slate-300'}`}>
+              {isFixed && <span className="w-2 h-2 bg-white rounded-sm block" />}
+            </div>
+            <RepeatIcon size={14} className={isFixed ? 'text-violet-600' : 'text-slate-400'} />
+            <span className={`text-sm font-medium ${isFixed ? 'text-violet-700' : 'text-slate-600'}`}>
+              Despesa fixa (recorrente)
+            </span>
+          </button>
+
+          {isFixed && (
+            <div className="space-y-2 pl-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="fixed_type" checked={form.fixed_months === 0}
+                  onChange={() => set('fixed_months', 0)}
+                  className="accent-violet-600" />
+                <span className="text-sm text-slate-700">Todos os meses (12 meses)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="fixed_type" checked={form.fixed_months > 0}
+                  onChange={() => set('fixed_months', form.fixed_months > 0 ? form.fixed_months : 3)}
+                  className="accent-violet-600" />
+                <span className="text-sm text-slate-700">Por</span>
+                <input type="number" min={1} max={60}
+                  className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  value={form.fixed_months > 0 ? form.fixed_months : 3}
+                  onChange={e => set('fixed_months', parseInt(e.target.value) || 1)}
+                  onClick={() => { if (form.fixed_months === 0) set('fixed_months', 3); }} />
+                <span className="text-sm text-slate-700">meses</span>
+              </label>
+              <p className="text-xs text-violet-600">
+                Serão criadas {form.fixed_months || 12} transações mensais a partir da data escolhida.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       <select
         className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={form.status} onChange={e => set('status', e.target.value)}
@@ -166,6 +231,27 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         <option value="paid">Pago</option>
         <option value="pending">Pendente</option>
       </select>
+
+      {/* Tags */}
+      {allTags.length > 0 && (
+        <div>
+          <label className="text-xs text-slate-500 mb-2 flex items-center gap-1 block">
+            <Tag size={11} /> Tags (opcional)
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {allTags.map(tag => {
+              const active = form.tag_ids.includes(tag.id);
+              return (
+                <button type="button" key={tag.id} onClick={() => toggleTag(tag.id)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${active ? 'border-transparent' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
+                  style={active ? { backgroundColor: tag.color + '22', color: tag.color, borderColor: tag.color + '44' } : {}}>
+                  {active && '✓ '}{tag.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <textarea
         placeholder="Observações (opcional)" rows={2}

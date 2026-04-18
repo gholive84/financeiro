@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Repeat } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
 const toIconName = (s) => s?.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^(.)/, (_, c) => c.toUpperCase());
@@ -32,12 +32,12 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
     <div className="space-y-2">
       {transactions.map(t => {
         const isSelected = selectedIds.includes(t.id);
+        const isFixed = t.expense_nature === 'fixed';
         return (
           <div key={t.id}
             className={`bg-white rounded-xl border px-4 py-3 hover:shadow-sm transition-shadow cursor-pointer flex items-center gap-3 ${isSelected ? 'border-blue-300 bg-blue-50/40' : 'border-slate-100'}`}
             onClick={() => selecting ? onToggleSelect?.(t.id) : onDetail?.(t)}>
 
-            {/* Checkbox — sempre visível em modo seleção, aparece no hover fora */}
             <div
               className={`flex-shrink-0 transition-opacity ${selecting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
               onClick={e => { e.stopPropagation(); onToggleSelect?.(t.id); }}>
@@ -56,8 +56,7 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                 <p className="text-sm font-medium text-slate-800 truncate">{t.description}</p>
 
-                {/* Badges desktop */}
-                <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+                <div className="hidden sm:flex items-center gap-1.5 flex-wrap flex-shrink-0">
                   <span className="text-xs text-slate-400">
                     {String(t.date).split('T')[0].split('-').reverse().join('/')}
                   </span>
@@ -66,13 +65,25 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
                       {t.category.parent_name ? `${t.category.parent_name} › ${t.category.name}` : t.category.name}
                     </Badge>
                   )}
+                  {isFixed && (
+                    <Badge className="bg-violet-50 text-violet-600">
+                      <span className="flex items-center gap-0.5"><Repeat size={9} /> Fixa</span>
+                    </Badge>
+                  )}
                   {t.installment_total > 1 && (
                     <Badge className="bg-purple-50 text-purple-500">{t.installment_current}/{t.installment_total}x</Badge>
                   )}
                   {t.status === 'pending' && <Badge className="bg-amber-50 text-amber-600">Pendente</Badge>}
+                  {/* Tags */}
+                  {t.tags?.slice(0, 3).map(tag => (
+                    <span key={tag.id}
+                      className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
+                      style={{ backgroundColor: tag.color + '22', color: tag.color }}>
+                      {tag.name}
+                    </span>
+                  ))}
                 </div>
 
-                {/* Data mobile */}
                 <p className="sm:hidden text-xs text-slate-400 mt-0.5">
                   {String(t.date).split('T')[0].split('-').reverse().join('/')}
                   {t.user && <span className="ml-1 text-slate-300">· @{t.user.username}</span>}
@@ -80,10 +91,8 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
               </div>
             </div>
 
-            {/* Valor + ações */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Tags direita — conta, cartão, usuário */}
-              <div className="flex flex-col items-end gap-0.5">
+              <div className="hidden sm:flex flex-col items-end gap-0.5">
                 {t.account && <AccountTag name={t.account.name} />}
                 {t.credit_card && (
                   <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ backgroundColor: t.credit_card.color + '22', color: t.credit_card.color }}>
