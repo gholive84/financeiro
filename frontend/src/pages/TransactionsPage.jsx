@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Trash2, Pencil, X, CheckSquare, Calendar } from 'lucide-react';
+import { Plus, Search, Trash2, Pencil, X, CheckSquare, Calendar, Hash } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/shared/Modal';
 import TransactionForm from '../components/Transactions/TransactionForm';
@@ -105,12 +105,16 @@ export default function TransactionsPage() {
   const [periodMode, setPeriodMode] = useState('month');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [filters, setFilters] = useState({ type: '', status: '', category_id: '' });
+  const [filters, setFilters] = useState({ type: '', status: '', category_id: '', tag_id: '' });
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkApplying, setBulkApplying] = useState(false);
+  const [allTags, setAllTags] = useState([]);
   const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
-  useEffect(() => { loadCategories(); loadAccounts(); loadCreditCards(); }, []);
+  useEffect(() => {
+    loadCategories(); loadAccounts(); loadCreditCards();
+    api.get('/tags').then(({ data }) => setAllTags(data)).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +125,7 @@ export default function TransactionsPage() {
     if (filters.type) params.set('type', filters.type);
     if (filters.status) params.set('status', filters.status);
     if (filters.category_id) params.set('category_id', filters.category_id);
+    if (filters.tag_id) params.set('tag_id', filters.tag_id);
     const { data } = await api.get(`/transactions?${params}`);
     setTransactions(data);
     setLoading(false);
@@ -264,6 +269,25 @@ export default function TransactionsPage() {
             })}
           </select>
         </div>
+
+        {/* Filtro por tags */}
+        {allTags.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Hash size={13} className="text-slate-400 flex-shrink-0" />
+            {allTags.map(tag => {
+              const active = filters.tag_id === String(tag.id);
+              return (
+                <button key={tag.id} type="button"
+                  onClick={() => setFilters(f => ({ ...f, tag_id: active ? '' : String(tag.id) }))}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${active ? 'border-transparent' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                  style={active ? { backgroundColor: tag.color + '22', color: tag.color, borderColor: tag.color + '55' } : {}}>
+                  {tag.name}
+                  {active && <X size={10} />}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Summary */}
