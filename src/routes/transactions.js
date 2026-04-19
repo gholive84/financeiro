@@ -234,7 +234,7 @@ router.post('/', async (req, res, next) => {
 // PUT /api/transactions/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, status, notes, expense_nature, tag_ids } = req.body;
+    const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, status, notes, expense_nature, fixed_months, tag_ids } = req.body;
 
     const [old] = await db.query('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
     if (!old.length) return res.status(404).json({ error: 'Transação não encontrada' });
@@ -243,6 +243,44 @@ router.put('/:id', async (req, res, next) => {
     if (prev.status === 'paid' && prev.account_id) {
       const revert = prev.type === 'income' ? -parseFloat(prev.amount) : parseFloat(prev.amount);
       await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, prev.account_id]);
+    }
+
+    // Convertendo para fixa: cria meses adicionais
+    const becomingFixed = expense_nature === 'fixed' && !prev.fixed_group_id && !credit_card_id;
+    if (becomingFixed) {
+      const numMonths = parseInt(fixed_months) || 12;
+      const groupId = uuidv4();
+      const [baseDate] = (date || String(prev.date)).split('T');
+      const [y, m, d] = baseDate.split('-').map(Number);
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      await db.query(
+        `UPDATE transactions SET description=?, amount=?, date=?, type=?, account_id=?, credit_card_id=?, category_id=?, is_recurring=?, status=?, notes=?, expense_nature='fixed', fixed_group_id=? WHERE id=?`,
+        [description, amount, date, type, account_id || null, null, category_id || null, is_recurring || false, status || 'paid', notes || null, groupId, req.params.id]
+      );
+      if ((status === 'paid' || !status) && account_id) {
+        const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
+        await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [delta, account_id]);
+      }
+
+      for (let i = 1; i < numMonths; i++) {
+        const fixedDate = new Date(y, m - 1 + i, d);
+        const fixedDateStr = fixedDate.toISOString().split('T')[0];
+        const fixedStatus = fixedDateStr <= todayStr ? 'paid' : 'pending';
+        await db.query(
+          `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, expense_nature, fixed_group_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fixed', ?)`,
+          [description, amount, fixedDateStr, type, account_id || null, null, category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId]
+        );
+        if (fixedStatus === 'paid' && account_id) {
+          const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
+          await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [delta, account_id]);
+        }
+      }
+
+      await setTags(req.params.id, tag_ids);
+      const [rows] = await db.query(transactionSelect + ' WHERE t.id = ?', [req.params.id]);
+      return res.json((await attachTags([formatTransaction(rows[0])]))[0]);
     }
 
     await db.query(

@@ -196,7 +196,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
             </span>
           </button>
 
-          {isFixed && isNew && (
+          {isFixed && (
             <div className="space-y-2 pl-6">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="fixed_type" checked={form.fixed_months === 0}
@@ -217,15 +217,11 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
                 <span className="text-sm text-slate-700">meses</span>
               </label>
               <p className="text-xs text-violet-600">
-                Serão criadas {form.fixed_months || 12} transações mensais a partir da data escolhida.
+                {isNew
+                  ? `Serão criadas ${form.fixed_months || 12} transações mensais a partir da data escolhida.`
+                  : `Esta transação + mais ${(form.fixed_months || 12) - 1} meses seguintes serão criados.`}
               </p>
             </div>
-          )}
-
-          {isFixed && !isNew && (
-            <p className="text-xs text-violet-600 pl-6">
-              Somente esta transação será marcada como fixa.
-            </p>
           )}
         </div>
       )}
