@@ -71,7 +71,8 @@ function FlowGeral({ year }) {
     setDetailLoading(true);
     setDetailTxs([]);
     try {
-      const { data: txs } = await api.get(`/transactions?month=${month}&year=${year}&category_id=${category.category_id}`);
+      const cashParam = mode === 'cash' ? '&cash_mode=true' : '';
+      const { data: txs } = await api.get(`/transactions?month=${month}&year=${year}&category_id=${category.category_id}${cashParam}`);
       const filtered = txs.filter(t => {
         if (category.is_installment)              return !!t.installment_group_id;
         if (category.expense_nature === 'fixed')  return t.expense_nature === 'fixed' && !t.installment_group_id;
@@ -304,6 +305,11 @@ function FlowGeral({ year }) {
               <div>
                 <p className="font-semibold text-slate-800 text-sm">{selected.category.category_name}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{MONTHS[selected.month - 1]} · {year}</p>
+                {mode === 'cash' && (
+                  <p className="text-[10px] text-blue-500 mt-0.5">
+                    Cartão: lançamentos de {selected.month === 1 ? `Dez/${year - 1}` : `${MONTHS[selected.month - 2]}/${year}`}
+                  </p>
+                )}
                 <p className={`text-lg font-bold mt-1 ${selected.category.category_type === 'expense' ? 'text-red-600' : 'text-green-600'} ${hasCuts ? 'line-through opacity-40 text-base' : ''}`}>
                   {fmtFull(originalTotal)}
                 </p>

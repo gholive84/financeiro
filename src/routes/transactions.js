@@ -102,8 +102,20 @@ router.get('/', async (req, res, next) => {
       sql += ' AND t.date >= ? AND t.date <= ?';
       params.push(start_date, end_date);
     } else if (month && year) {
-      sql += ' AND MONTH(t.date) = ? AND YEAR(t.date) = ?';
-      params.push(month, year);
+      if (req.query.cash_mode === 'true') {
+        // cash mode: non-CC from month M, CC from month M-1 (or Dec of Y-1 when M=1)
+        const m = parseInt(month), y = parseInt(year);
+        const prevM = m === 1 ? 12 : m - 1;
+        const prevY = m === 1 ? y - 1 : y;
+        sql += ` AND (
+          (t.credit_card_id IS NULL AND MONTH(t.date) = ? AND YEAR(t.date) = ?)
+          OR (t.credit_card_id IS NOT NULL AND MONTH(t.date) = ? AND YEAR(t.date) = ?)
+        )`;
+        params.push(m, y, prevM, prevY);
+      } else {
+        sql += ' AND MONTH(t.date) = ? AND YEAR(t.date) = ?';
+        params.push(month, year);
+      }
     }
     if (type) { sql += ' AND t.type = ?'; params.push(type); }
     if (account_id) { sql += ' AND t.account_id = ?'; params.push(account_id); }
