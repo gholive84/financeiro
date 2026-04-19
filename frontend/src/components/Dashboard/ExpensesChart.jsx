@@ -111,9 +111,8 @@ export default function ExpensesChart() {
     else setMonth(m => m + 1);
   }
 
-  const handleBarClick = (data) => {
-    if (!data?.activePayload?.[0]) return;
-    const entry = data.activePayload[0].payload;
+  const handleBarClick = (entry) => {
+    if (!entry) return;
     setSelected({ categoryId: entry.category_id, categoryName: entry.category, categoryColor: entry.color });
   };
 
@@ -153,7 +152,7 @@ export default function ExpensesChart() {
               <span className="ml-2 text-slate-300">· clique numa barra para ver transações</span>
             </p>
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData.data} margin={{ top: 0, right: 0, left: 0, bottom: 40 }} onClick={handleBarClick} style={{ cursor: 'pointer' }}>
+              <BarChart data={chartData.data} margin={{ top: 0, right: 0, left: 0, bottom: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis
                   dataKey="category"
@@ -168,7 +167,7 @@ export default function ExpensesChart() {
                   width={55}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                <Bar dataKey="total" radius={[6, 6, 0, 0]} onClick={handleBarClick} style={{ cursor: 'pointer' }}>
                   {chartData.data.map((entry, i) => (
                     <Cell key={i} fill={entry.color || '#2563EB'}
                       opacity={selected && selected.categoryId !== entry.category_id ? 0.4 : 1} />
