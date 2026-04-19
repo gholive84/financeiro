@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, CreditCard, Pencil, Scissors, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, CreditCard, Pencil, Scissors, RotateCcw, Target } from 'lucide-react';
 import api from '../services/api';
 import TransactionForm from '../components/Transactions/TransactionForm';
 
@@ -19,6 +19,8 @@ function FlowGeral({ year }) {
   const [mode, setMode] = useState('accrual'); // 'accrual' | 'cash'
   // cutTxs: Map<id, { tx, catKey, month }>
   const [cutTxs, setCutTxs] = useState(new Map());
+  // budgetMap: { [category_id]: { [month]: { amount_planned, amount_spent } } }
+  const [budgetMap, setBudgetMap] = useState({});
 
   const getCatKey = (cat) => `${cat.category_id}_${cat.is_installment ? 1 : 0}_${cat.expense_nature}`;
 
@@ -39,6 +41,16 @@ function FlowGeral({ year }) {
       .then(r => setData(r.data))
       .catch(() => setData({ categories: [] }))
       .finally(() => setLoading(false));
+    api.get(`/budgets?year=${year}`)
+      .then(r => {
+        const map = {};
+        for (const b of r.data) {
+          if (!map[b.category_id]) map[b.category_id] = {};
+          map[b.category_id][b.month] = { planned: b.amount_planned, spent: b.amount_spent };
+        }
+        setBudgetMap(map);
+      })
+      .catch(() => setBudgetMap({}));
   }, [year, mode, refreshKey]);
 
   const incomes             = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total), [data]);
@@ -133,6 +145,7 @@ function FlowGeral({ year }) {
                 const orig = cat.months[m] || 0;
                 const cutAmt = cutForCatMonth(cat, m);
                 const display = orig - cutAmt;
+                const budget = budgetMap[cat.category_id]?.[m];
                 const cls = orig === 0
                   ? 'text-slate-300 text-xs'
                   : cutAmt > 0
@@ -143,7 +156,18 @@ function FlowGeral({ year }) {
                 return (
                   <td key={m} className={`px-2 py-2 text-right whitespace-nowrap ${cls}`}
                     onClick={() => handleCellClick(cat, m)}>
-                    {fmt(display)}
+                    <div className="inline-flex flex-col items-end gap-0.5">
+                      {fmt(display)}
+                      {budget && (
+                        <div className="w-full min-w-[32px] h-0.5 rounded-full bg-slate-200 overflow-hidden">
+                          <div className="h-full rounded-full"
+                            style={{
+                              width: `${Math.min(100, budget.planned > 0 ? (budget.spent / budget.planned) * 100 : 0)}%`,
+                              backgroundColor: budget.spent > budget.planned ? '#ef4444' : '#22c55e',
+                            }} />
+                        </div>
+                      )}
+                    </div>
                   </td>
                 );
               })}
@@ -326,6 +350,37 @@ function FlowGeral({ year }) {
                 <X size={16} className="text-slate-400" />
               </button>
             </div>
+
+            {/* Budget block */}
+            {(() => {
+              const b = budgetMap[selected.category.category_id]?.[selected.month];
+              if (!b) return null;
+              const spent = b.spent;
+              const planned = b.planned;
+              const remaining = planned - spent;
+              const pct = planned > 0 ? Math.min(100, (spent / planned) * 100) : 0;
+              const over = spent > planned;
+              return (
+                <div className={`mb-4 rounded-xl border p-3 space-y-2 ${over ? 'border-red-200 bg-red-50 dark:bg-red-900/20' : 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <Target size={12} /> Orçamento
+                    </span>
+                    <span className="text-xs text-slate-500">R$ {planned.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                    <div className="h-full rounded-full transition-all"
+                      style={{ width: `${pct}%`, backgroundColor: over ? '#ef4444' : '#22c55e' }} />
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Gasto: <span className="font-semibold text-slate-700 dark:text-slate-200">R$ {spent.toFixed(2).replace('.', ',')}</span></span>
+                    <span className={over ? 'text-red-600 font-semibold' : 'text-emerald-600 font-semibold'}>
+                      {over ? `Excedido R$ ${Math.abs(remaining).toFixed(2).replace('.', ',')}` : `Saldo R$ ${remaining.toFixed(2).replace('.', ',')}`}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {cutTxs.size > 0 && (
               <button onClick={() => setCutTxs(new Map())}

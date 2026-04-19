@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// GET /api/budgets?month=&year=
+// GET /api/budgets?month=&year= OR ?year= (all months)
 router.get('/', async (req, res, next) => {
   try {
     const { month, year } = req.query;
+    const yearOnly = year && !month;
     const [rows] = await db.query(`
       SELECT b.*, c.name as category_name, c.icon as category_icon, c.color as category_color,
         COALESCE((
@@ -16,9 +17,9 @@ router.get('/', async (req, res, next) => {
         ), 0) as amount_spent
       FROM budgets b
       JOIN categories c ON b.category_id = c.id
-      WHERE b.month = ? AND b.year = ?
-      ORDER BY c.name
-    `, [month, year]);
+      WHERE ${yearOnly ? 'b.year = ?' : 'b.month = ? AND b.year = ?'}
+      ORDER BY b.month, c.name
+    `, yearOnly ? [year] : [month, year]);
 
     res.json(rows.map(r => ({
       ...r,
