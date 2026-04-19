@@ -44,13 +44,12 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, [navMonth, navYear, location.key]);
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Carregando...</div>;
-  if (!data) return null;
-
   const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
+  if (!data) return <div className="flex items-center justify-center h-64 text-slate-400">Carregando...</div>;
+
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 transition-opacity duration-150 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Dashboard</h1>
         <div className="flex items-center gap-2">
