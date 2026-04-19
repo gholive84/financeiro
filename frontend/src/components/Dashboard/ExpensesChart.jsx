@@ -81,10 +81,13 @@ function TransactionPanel({ categoryId, categoryName, categoryColor, month, year
   );
 }
 
-export default function ExpensesChart() {
+export default function ExpensesChart({ month: propMonth, year: propYear }) {
   const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const controlled = propMonth != null && propYear != null;
+  const [intMonth, setIntMonth] = useState(now.getMonth() + 1);
+  const [intYear,  setIntYear]  = useState(now.getFullYear());
+  const month = controlled ? propMonth : intMonth;
+  const year  = controlled ? propYear  : intYear;
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -100,15 +103,14 @@ export default function ExpensesChart() {
   useEffect(() => { setSelected(null); }, [month, year]);
 
   function prevMonth() {
-    if (month === 1) { setMonth(12); setYear(y => y - 1); }
-    else setMonth(m => m - 1);
+    if (intMonth === 1) { setIntMonth(12); setIntYear(y => y - 1); }
+    else setIntMonth(m => m - 1);
   }
-
   function nextMonth() {
-    const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
-    if (isCurrentMonth) return;
-    if (month === 12) { setMonth(1); setYear(y => y + 1); }
-    else setMonth(m => m + 1);
+    const isCurrent = intMonth === now.getMonth() + 1 && intYear === now.getFullYear();
+    if (isCurrent) return;
+    if (intMonth === 12) { setIntMonth(1); setIntYear(y => y + 1); }
+    else setIntMonth(m => m + 1);
   }
 
   const handleBarClick = (entry) => {
@@ -116,7 +118,7 @@ export default function ExpensesChart() {
     setSelected({ categoryId: entry.category_id, categoryName: entry.category, categoryColor: entry.color });
   };
 
-  const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
+  const isCurrentMonth = intMonth === now.getMonth() + 1 && intYear === now.getFullYear();
   const total = chartData?.data.reduce((s, d) => s + d.total, 0) ?? 0;
 
   return (
@@ -124,21 +126,20 @@ export default function ExpensesChart() {
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-slate-800 dark:text-slate-100">Gastos por Categoria</h2>
-          <div className="flex items-center gap-1">
-            <button onClick={prevMonth} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
-              <ChevronLeft size={16} />
-            </button>
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300 w-20 text-center">
-              {MONTH_NAMES[month - 1]} {year}
-            </span>
-            <button
-              onClick={nextMonth}
-              disabled={isCurrentMonth}
-              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
+          {!controlled && (
+            <div className="flex items-center gap-1">
+              <button onClick={prevMonth} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300 w-20 text-center">
+                {MONTH_NAMES[intMonth - 1]} {intYear}
+              </span>
+              <button onClick={nextMonth} disabled={isCurrentMonth}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         {loading ? (

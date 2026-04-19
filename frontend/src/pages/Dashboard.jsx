@@ -29,13 +29,11 @@ export default function Dashboard() {
   const location = useLocation();
 
   const navigate = (delta) => {
-    setNavMonth(m => {
-      let nm = m + delta, ny = navYear;
-      if (nm > 12) { nm = 1;  ny++; }
-      if (nm < 1)  { nm = 12; ny--; }
-      setNavYear(ny);
-      return nm;
-    });
+    let nm = navMonth + delta, ny = navYear;
+    if (nm > 12) { nm = 1;  ny++; }
+    if (nm < 1)  { nm = 12; ny--; }
+    setNavMonth(nm);
+    setNavYear(ny);
   };
 
   useEffect(() => {
@@ -158,7 +156,7 @@ export default function Dashboard() {
       )}
 
       {/* Expenses Chart */}
-      <ExpensesChart />
+      <ExpensesChart month={navMonth} year={navYear} />
 
       {/* Recent */}
       {data.recent_transactions.length > 0 && (

@@ -147,13 +147,16 @@ function FlowGeral({ year }) {
                 const cutAmt = cutForCatMonth(cat, m);
                 const display = orig - cutAmt;
                 const budget = budgetMap[cat.category_id]?.[m];
+                const overBudget = budget && budget.spent > budget.planned;
                 const cls = orig === 0
                   ? 'text-slate-300 text-xs'
-                  : cutAmt > 0
-                    ? 'text-emerald-600 font-medium text-xs cursor-pointer bg-emerald-50/70 rounded'
-                    : type === 'expense'
-                      ? 'text-red-600 font-medium text-xs cursor-pointer hover:bg-red-50 rounded'
-                      : 'text-green-600 font-medium text-xs cursor-pointer hover:bg-green-50 rounded';
+                  : overBudget
+                    ? 'text-white font-medium text-xs cursor-pointer bg-red-500 rounded'
+                    : cutAmt > 0
+                      ? 'text-emerald-600 font-medium text-xs cursor-pointer bg-emerald-50/70 rounded'
+                      : type === 'expense'
+                        ? 'text-red-600 font-medium text-xs cursor-pointer hover:bg-red-50 rounded'
+                        : 'text-green-600 font-medium text-xs cursor-pointer hover:bg-green-50 rounded';
                 return (
                   <td key={m} className={`px-2 py-2 text-right whitespace-nowrap ${cls}`}
                     onClick={() => handleCellClick(cat, m)}>
