@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import api from '../services/api';
 import { useApp } from '../context/AppContext';
 import BudgetProgress from '../components/Budget/BudgetProgress';
 import Modal from '../components/shared/Modal';
 
-function BudgetForm({ categories, onSave, onCancel, month, year }) {
-  const [form, setForm] = useState({ category_id: '', amount_planned: '' });
+function BudgetForm({ categories, onSave, onCancel, month, year, initial }) {
+  const isEdit = !!initial;
+  const [form, setForm] = useState({
+    category_id: initial?.category_id ?? '',
+    amount_planned: initial ? String(initial.amount_planned) : '',
+  });
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const expenseCategories = categories.filter(c => c.type === 'expense');
@@ -23,11 +27,17 @@ function BudgetForm({ categories, onSave, onCancel, month, year }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <select required className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-        value={form.category_id} onChange={e => set('category_id', e.target.value)}>
-        <option value="">Selecione a categoria</option>
-        {expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-      </select>
+      {isEdit ? (
+        <div className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
+          {initial.category_name}
+        </div>
+      ) : (
+        <select required className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
+          value={form.category_id} onChange={e => set('category_id', e.target.value)}>
+          <option value="">Selecione a categoria</option>
+          {expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      )}
       <input required type="number" step="0.01" min="0.01" placeholder="Valor planejado (R$)"
         className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.amount_planned} onChange={e => set('amount_planned', e.target.value)} />
@@ -47,6 +57,7 @@ export default function BudgetPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [budgets, setBudgets] = useState([]);
   const [modal, setModal] = useState(false);
+  const [editBudget, setEditBudget] = useState(null);
   const { categories, loadCategories } = useApp();
 
   useEffect(() => { loadCategories(); }, []);
@@ -116,10 +127,16 @@ export default function BudgetPage() {
           {budgets.map(b => (
             <div key={b.id} className="relative group">
               <BudgetProgress budget={b} />
-              <button onClick={() => handleDelete(b.id)}
-                className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all">
-                <Trash2 size={13} />
-              </button>
+              <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={() => setEditBudget(b)}
+                  className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-500 transition-colors">
+                  <Pencil size={13} />
+                </button>
+                <button onClick={() => handleDelete(b.id)}
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -129,6 +146,15 @@ export default function BudgetPage() {
         <BudgetForm categories={categories} month={month} year={year}
           onSave={() => { setModal(false); load(); }}
           onCancel={() => setModal(false)} />
+      </Modal>
+
+      <Modal open={!!editBudget} onClose={() => setEditBudget(null)} title="Editar Orçamento" size="sm">
+        {editBudget && (
+          <BudgetForm categories={categories} month={month} year={year}
+            initial={editBudget}
+            onSave={() => { setEditBudget(null); load(); }}
+            onCancel={() => setEditBudget(null)} />
+        )}
       </Modal>
     </div>
   );
