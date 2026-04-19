@@ -258,13 +258,13 @@ export default function ImportPage() {
             <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 text-center">
               <p className="text-xs text-slate-400 mb-1">Total despesas</p>
               <p className="font-bold text-red-500">
-                R$ {transactions.filter(t => selected.includes(t._id) && t.type === 'expense').reduce((s, t) => s + parseFloat(t.amount), 0).toFixed(2).replace('.', ',')}
+                R$ {transactions.filter(t => selected.includes(t._id) && t.type === 'expense').reduce((s, t) => s + parseFloat(t.amount), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 text-center">
               <p className="text-xs text-slate-400 mb-1">Total receitas</p>
               <p className="font-bold text-green-600">
-                R$ {transactions.filter(t => selected.includes(t._id) && t.type === 'income').reduce((s, t) => s + parseFloat(t.amount), 0).toFixed(2).replace('.', ',')}
+                R$ {transactions.filter(t => selected.includes(t._id) && t.type === 'income').reduce((s, t) => s + parseFloat(t.amount), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
           </div>

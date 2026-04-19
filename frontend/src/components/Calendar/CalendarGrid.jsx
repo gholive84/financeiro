@@ -74,13 +74,13 @@ export default function CalendarGrid({ year, month, data, onDayClick, onMonthCha
                   {dayData.total_expense > 0 && (
                     <p className="text-[9px] sm:text-xs text-red-500 font-semibold truncate leading-tight">
                       <span className="sm:hidden">-{dayData.total_expense.toFixed(0)}</span>
-                      <span className="hidden sm:block">-R$ {dayData.total_expense.toFixed(2).replace('.', ',')}</span>
+                      <span className="hidden sm:block">-R$ {dayData.total_expense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </p>
                   )}
                   {dayData.total_income > 0 && (
                     <p className="text-[9px] sm:text-xs text-green-600 font-semibold truncate leading-tight">
                       <span className="sm:hidden">+{dayData.total_income.toFixed(0)}</span>
-                      <span className="hidden sm:block">+R$ {dayData.total_income.toFixed(2).replace('.', ',')}</span>
+                      <span className="hidden sm:block">+R$ {dayData.total_income.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </p>
                   )}
                 </div>

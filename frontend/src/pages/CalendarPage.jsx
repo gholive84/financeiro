@@ -53,7 +53,7 @@ function TransactionDetail({ transaction: t, onClose, onDelete }) {
         </button>
         <p className="font-semibold text-slate-800 flex-1 truncate">{t.description}</p>
         <span className={`text-base font-bold flex-shrink-0 ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-          {t.type === 'income' ? '+' : '-'} R$ {parseFloat(t.amount).toFixed(2).replace('.', ',')}
+          {t.type === 'income' ? '+' : '-'} R$ {parseFloat(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       </div>
 
@@ -318,10 +318,10 @@ export default function CalendarPage() {
                     </p>
                     <div className="flex gap-3 mt-1">
                       {visibleSelectedDay.total_income > 0 && (
-                        <span className="text-xs text-green-600 font-semibold">+R$ {visibleSelectedDay.total_income.toFixed(2).replace('.', ',')}</span>
+                        <span className="text-xs text-green-600 font-semibold">+R$ {visibleSelectedDay.total_income.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       )}
                       {visibleSelectedDay.total_expense > 0 && (
-                        <span className="text-xs text-red-500 font-semibold">-R$ {visibleSelectedDay.total_expense.toFixed(2).replace('.', ',')}</span>
+                        <span className="text-xs text-red-500 font-semibold">-R$ {visibleSelectedDay.total_expense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       )}
                     </div>
                   </div>
@@ -355,7 +355,7 @@ export default function CalendarPage() {
                         </div>
                       </div>
                       <span className={`text-sm font-semibold flex-shrink-0 ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                        {t.type === 'income' ? '+' : '-'} R$ {parseFloat(t.amount).toFixed(2).replace('.', ',')}
+                        {t.type === 'income' ? '+' : '-'} R$ {parseFloat(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </button>
                   ))}

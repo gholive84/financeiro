@@ -4,8 +4,8 @@ import api from '../services/api';
 import TransactionForm from '../components/Transactions/TransactionForm';
 
 const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const fmt = (v) => v === 0 ? '—' : `R$\u00a0${v.toFixed(2).replace('.', ',')}`;
-const fmtFull = (v) => `R$ ${Math.abs(v).toFixed(2).replace('.', ',')}`;
+const fmt = (v) => v === 0 ? '—' : `R$\u00a0${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtFull = (v) => `R$ ${Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // ── Tabela Geral ──────────────────────────────────────────────────────────────
 function FlowGeral({ year }) {
@@ -376,16 +376,16 @@ function FlowGeral({ year }) {
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                       <Target size={12} /> Orçamento
                     </span>
-                    <span className="text-xs text-slate-500">R$ {planned.toFixed(2).replace('.', ',')}</span>
+                    <span className="text-xs text-slate-500">R$ {planned.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
                     <div className="h-full rounded-full transition-all"
                       style={{ width: `${pct}%`, backgroundColor: over ? '#ef4444' : '#22c55e' }} />
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Gasto: <span className="font-semibold text-slate-700 dark:text-slate-200">R$ {spent.toFixed(2).replace('.', ',')}</span></span>
+                    <span className="text-slate-500">Gasto: <span className="font-semibold text-slate-700 dark:text-slate-200">R$ {spent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                     <span className={over ? 'text-red-600 font-semibold' : 'text-emerald-600 font-semibold'}>
-                      {over ? `Excedido R$ ${Math.abs(remaining).toFixed(2).replace('.', ',')}` : `Saldo R$ ${remaining.toFixed(2).replace('.', ',')}`}
+                      {over ? `Excedido R$ ${Math.abs(remaining).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `Saldo R$ ${remaining.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </span>
                   </div>
                 </div>

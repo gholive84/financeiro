@@ -102,7 +102,7 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
                 {t.user && <span className="text-[10px] text-slate-300 hidden sm:inline">@{t.user.username}</span>}
               </div>
               <span className={`text-sm font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
+                {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
               {!selecting && <>
                 <button onClick={e => { e.stopPropagation(); onEdit(t); }}

@@ -141,7 +141,7 @@ export default function CreditCardsPage() {
               </div>
               {c.credit_limit && (
                 <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">
-                  Limite: <span className="font-semibold">R$ {parseFloat(c.credit_limit).toFixed(2).replace('.', ',')}</span>
+                  Limite: <span className="font-semibold">R$ {parseFloat(c.credit_limit).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </p>
               )}
               <div className="flex gap-4 text-xs text-slate-500 dark:text-slate-400">

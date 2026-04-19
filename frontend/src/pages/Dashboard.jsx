@@ -14,7 +14,7 @@ function StatCard({ label, value, icon: Icon, color, sub }) {
           <Icon size={18} style={{ color }} />
         </span>
       </div>
-      <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">R$ {value.toFixed(2).replace('.', ',')}</p>
+      <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">R$ {value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
       {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
     </div>
   );
@@ -88,7 +88,7 @@ export default function Dashboard() {
                   <p className="text-xs text-slate-400">{a.type}</p>
                 </div>
                 <p className={`text-sm font-bold flex-shrink-0 ${a.balance < 0 ? 'text-red-500' : 'text-slate-800 dark:text-slate-100'}`}>
-                  R$ {a.balance.toFixed(2).replace('.', ',')}
+                  R$ {a.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             ))}
@@ -113,7 +113,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{b.category_name}</span>
                     <span className="text-sm text-slate-500 dark:text-slate-400">
-                      R$ {b.amount_spent.toFixed(2).replace('.', ',')} / R$ {b.amount_planned.toFixed(2).replace('.', ',')}
+                      R$ {b.amount_spent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / R$ {b.amount_planned.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <ProgressBar value={b.amount_spent} max={b.amount_planned} />
@@ -146,7 +146,7 @@ export default function Dashboard() {
                   )}
                 </div>
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-100 flex-shrink-0">
-                  R$ {s.current_amount.toFixed(2).replace('.', ',')}
+                  R$ {s.current_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             ))}
@@ -177,7 +177,7 @@ export default function Dashboard() {
                   </p>
                 </div>
                 <span className={`text-sm font-semibold flex-shrink-0 ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                  {t.type === 'income' ? '+' : '-'} R$ {parseFloat(t.amount).toFixed(2).replace('.', ',')}
+                  {t.type === 'income' ? '+' : '-'} R$ {parseFloat(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             ))}

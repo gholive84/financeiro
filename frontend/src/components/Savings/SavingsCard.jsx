@@ -40,11 +40,11 @@ export default function SavingsCard({ box, onEdit, onDelete, onMove }) {
       <div className="mb-3">
         <div className="flex items-baseline justify-between mb-1.5">
           <span className="text-2xl font-bold text-slate-800">
-            R$ {box.current_amount.toFixed(2).replace('.', ',')}
+            R$ {box.current_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
           {box.target_amount && (
             <span className="text-sm text-slate-400">
-              / R$ {box.target_amount.toFixed(2).replace('.', ',')}
+              / R$ {box.target_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           )}
         </div>

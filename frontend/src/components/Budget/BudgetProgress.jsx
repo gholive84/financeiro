@@ -26,16 +26,16 @@ export default function BudgetProgress({ budget }) {
         </div>
         <div className="text-right">
           <p className={`text-sm font-bold ${pct >= 100 ? 'text-red-500' : 'text-slate-800'}`}>
-            R$ {amount_spent.toFixed(2).replace('.', ',')}
+            R$ {amount_spent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-slate-400">de R$ {amount_planned.toFixed(2).replace('.', ',')}</p>
+          <p className="text-xs text-slate-400">de R$ {amount_planned.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
       </div>
       <ProgressBar value={amount_spent} max={amount_planned} />
       <p className={`text-xs mt-2 ${remaining < 0 ? 'text-red-500' : 'text-slate-400'}`}>
         {remaining < 0
-          ? `R$ ${Math.abs(remaining).toFixed(2).replace('.', ',')} acima do limite`
-          : `R$ ${remaining.toFixed(2).replace('.', ',')} restantes`}
+          ? `R$ ${Math.abs(remaining).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} acima do limite`
+          : `R$ ${remaining.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} restantes`}
       </p>
     </div>
   );

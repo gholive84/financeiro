@@ -88,7 +88,7 @@ export default function SavingsPage() {
           <h1 className="text-2xl font-bold text-slate-800">Caixinhas</h1>
           {boxes.length > 0 && (
             <p className="text-sm text-slate-400 mt-1">
-              Total guardado: <span className="font-semibold text-slate-700">R$ {totalSaved.toFixed(2).replace('.', ',')}</span>
+              Total guardado: <span className="font-semibold text-slate-700">R$ {totalSaved.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </p>
           )}
         </div>

@@ -98,7 +98,7 @@ export default function AccountsPage() {
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Contas</h1>
           {accounts.length > 0 && (
             <p className="text-sm text-slate-400 mt-1">
-              Saldo total: <span className="font-semibold text-slate-700 dark:text-slate-200">R$ {totalBalance.toFixed(2).replace('.', ',')}</span>
+              Saldo total: <span className="font-semibold text-slate-700 dark:text-slate-200">R$ {totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </p>
           )}
         </div>
@@ -144,7 +144,7 @@ export default function AccountsPage() {
                 </div>
               </div>
               <p className={`text-2xl font-bold ${parseFloat(a.balance) < 0 ? 'text-red-500' : 'text-slate-800 dark:text-slate-100'}`}>
-                R$ {parseFloat(a.balance).toFixed(2).replace('.', ',')}
+                R$ {parseFloat(a.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
           ))}

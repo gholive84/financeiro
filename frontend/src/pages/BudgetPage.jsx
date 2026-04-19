@@ -104,12 +104,12 @@ export default function BudgetPage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl border border-slate-100 px-5 py-4">
             <p className="text-xs text-slate-400 mb-1">Total Planejado</p>
-            <p className="text-xl font-bold text-slate-800">R$ {totalPlanned.toFixed(2).replace('.', ',')}</p>
+            <p className="text-xl font-bold text-slate-800">R$ {totalPlanned.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 px-5 py-4">
             <p className="text-xs text-slate-400 mb-1">Total Gasto</p>
             <p className={`text-xl font-bold ${totalSpent > totalPlanned ? 'text-red-500' : 'text-slate-800'}`}>
-              R$ {totalSpent.toFixed(2).replace('.', ',')}
+              R$ {totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>

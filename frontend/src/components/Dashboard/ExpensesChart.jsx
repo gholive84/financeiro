@@ -6,7 +6,7 @@ import api from '../../services/api';
 const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 function fmt(v) {
-  return 'R$ ' + parseFloat(v).toFixed(2).replace('.', ',');
+  return 'R$ ' + parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function CustomTooltip({ active, payload }) {

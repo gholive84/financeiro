@@ -33,7 +33,7 @@ function TransactionDetail({ t, onClose, onEdit, onDelete }) {
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-slate-800 truncate">{t.description}</p>
           <p className={`text-xl font-bold mt-0.5 ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-            {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
+            {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
       </div>
@@ -327,7 +327,7 @@ export default function TransactionsPage() {
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-4 py-3 text-center">
               <p className="text-xs text-slate-400 mb-1">{label}</p>
-              <p className={`text-lg font-bold ${color === 'text-slate-800' ? 'text-slate-800 dark:text-slate-100' : color}`}>R$ {Math.abs(value).toFixed(2).replace('.', ',')}</p>
+              <p className={`text-lg font-bold ${color === 'text-slate-800' ? 'text-slate-800 dark:text-slate-100' : color}`}>R$ {Math.abs(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
           ))}
         </div>

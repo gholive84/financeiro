@@ -365,7 +365,7 @@ export default function AILaunchPage() {
                   value={transaction.installments || 1} onChange={e => set('installments', parseInt(e.target.value))}>
                   <option value={1}>À vista (1x)</option>
                   {[2,3,4,5,6,7,8,9,10,11,12,18,24].map(n => (
-                    <option key={n} value={n}>{n}x {transaction.amount ? `de R$ ${(parseFloat(transaction.amount) / n).toFixed(2).replace('.', ',')}` : ''}</option>
+                    <option key={n} value={n}>{n}x {transaction.amount ? `de R$ ${(parseFloat(transaction.amount) / n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</option>
                   ))}
                 </select>
                 {(transaction.installments || 1) > 1 && (

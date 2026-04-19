@@ -220,9 +220,9 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
                   const v = parseFloat(form.amount) || 0;
                   const n = parseInt(form.installments) || 1;
                   if (installmentMode === 'total') {
-                    return `${n}× de R$ ${(v / n).toFixed(2).replace('.', ',')}`;
+                    return `${n}× de R$ ${(v / n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                   } else {
-                    return `Total: R$ ${(v * n).toFixed(2).replace('.', ',')}`;
+                    return `Total: R$ ${(v * n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                   }
                 })()}
               </p>
