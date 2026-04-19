@@ -1,47 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Trash2, Pencil, X, CheckSquare, Calendar, Hash } from 'lucide-react';
+import { Plus, Search, Trash2, Pencil, X, CheckSquare, Calendar, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/shared/Modal';
 import TransactionForm from '../components/Transactions/TransactionForm';
 import TransactionList from '../components/Transactions/TransactionList';
 import { useApp } from '../context/AppContext';
 
-// --- Utilitário de períodos ---
-const PERIOD_PRESETS = [
-  { key: 'today',      label: 'Hoje' },
-  { key: 'month',      label: 'Este mês' },
-  { key: 'last_month', label: 'Mês anterior' },
-  { key: 'custom',     label: 'Personalizado' },
-];
+const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-function getPeriodParams(mode, customStart, customEnd) {
+function getPeriodParams(mode, navMonth, navYear, customStart, customEnd) {
   const today = new Date();
   const fmt = d => d.toISOString().split('T')[0];
-
-  switch (mode) {
-    case 'today':
-      return { start_date: fmt(today), end_date: fmt(today) };
-    case '7days': {
-      const s = new Date(today); s.setDate(s.getDate() - 6);
-      return { start_date: fmt(s), end_date: fmt(today) };
-    }
-    case '15days': {
-      const s = new Date(today); s.setDate(s.getDate() - 14);
-      return { start_date: fmt(s), end_date: fmt(today) };
-    }
-    case 'month':
-      return { month: today.getMonth() + 1, year: today.getFullYear() };
-    case 'last_month': {
-      const d = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      return { month: d.getMonth() + 1, year: d.getFullYear() };
-    }
-    case 'custom':
-      return customStart && customEnd
-        ? { start_date: customStart, end_date: customEnd }
-        : { month: today.getMonth() + 1, year: today.getFullYear() };
-    default:
-      return { month: today.getMonth() + 1, year: today.getFullYear() };
-  }
+  if (mode === 'today') return { start_date: fmt(today), end_date: fmt(today) };
+  if (mode === 'custom') return customStart && customEnd
+    ? { start_date: customStart, end_date: customEnd }
+    : { month: today.getMonth() + 1, year: today.getFullYear() };
+  return { month: navMonth, year: navYear };
 }
 
 function TransactionDetail({ t, onClose, onEdit, onDelete }) {
@@ -102,7 +76,9 @@ export default function TransactionsPage() {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [periodMode, setPeriodMode] = useState('month');
+  const [periodMode, setPeriodMode] = useState('nav');
+  const [navMonth, setNavMonth] = useState(() => new Date().getMonth() + 1);
+  const [navYear, setNavYear]   = useState(() => new Date().getFullYear());
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [filters, setFilters] = useState({ type: '', status: '', category_id: '', account_id: '', credit_card_id: '', tag_id: '' });
@@ -119,7 +95,7 @@ export default function TransactionsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
-    const period = getPeriodParams(periodMode, customStart, customEnd);
+    const period = getPeriodParams(periodMode, navMonth, navYear, customStart, customEnd);
     if (period.start_date) { params.set('start_date', period.start_date); params.set('end_date', period.end_date); }
     else if (period.month) { params.set('month', period.month); params.set('year', period.year); }
     if (filters.type) params.set('type', filters.type);
@@ -131,7 +107,7 @@ export default function TransactionsPage() {
     const { data } = await api.get(`/transactions?${params}`);
     setTransactions(data);
     setLoading(false);
-  }, [periodMode, customStart, customEnd, filters]);
+  }, [periodMode, navMonth, navYear, customStart, customEnd, filters]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -188,6 +164,17 @@ export default function TransactionsPage() {
     if (key !== 'custom') { setCustomStart(''); setCustomEnd(''); }
   };
 
+  const prevMonth = () => {
+    if (navMonth === 1) { setNavMonth(12); setNavYear(y => y - 1); }
+    else setNavMonth(m => m - 1);
+    setPeriodMode('nav');
+  };
+  const nextMonth = () => {
+    if (navMonth === 12) { setNavMonth(1); setNavYear(y => y + 1); }
+    else setNavMonth(m => m + 1);
+    setPeriodMode('nav');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -203,17 +190,34 @@ export default function TransactionsPage() {
       {/* Filtros */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
 
-        {/* Filtro de período */}
-        <div className="flex flex-wrap gap-1.5">
-          {PERIOD_PRESETS.map(p => (
-            <button key={p.key} onClick={() => handlePeriodChange(p.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
-                ${periodMode === p.key
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
-              {p.label}
+        {/* Navegação de mês */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1">
+            <button onClick={prevMonth}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+              <ChevronLeft size={15} className="text-slate-600 dark:text-slate-300" />
             </button>
-          ))}
+            <button
+              onClick={() => setPeriodMode('nav')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-bold min-w-[160px] text-center transition-colors ${periodMode === 'nav' ? 'bg-blue-600 text-white' : 'border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+              {MONTH_NAMES[navMonth - 1]} {navYear}
+            </button>
+            <button onClick={nextMonth}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+              <ChevronRight size={15} className="text-slate-600 dark:text-slate-300" />
+            </button>
+          </div>
+
+          <div className="flex gap-1.5">
+            <button onClick={() => handlePeriodChange('today')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${periodMode === 'today' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+              Hoje
+            </button>
+            <button onClick={() => handlePeriodChange('custom')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${periodMode === 'custom' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+              Personalizado
+            </button>
+          </div>
         </div>
 
         {/* Datas personalizadas */}
