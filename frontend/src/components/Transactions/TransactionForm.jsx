@@ -264,7 +264,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
       <div className="flex gap-3 pt-2">
         <button
           type="button" onClick={onCancel}
-          className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
         >
           Cancelar
         </button>

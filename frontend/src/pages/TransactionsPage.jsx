@@ -188,7 +188,7 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Transações</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Transações</h1>
         <button
           onClick={() => { setEditing(null); setModal(true); }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
@@ -198,7 +198,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
 
         {/* Filtro de período */}
         <div className="flex flex-wrap gap-1.5">
@@ -207,7 +207,7 @@ export default function TransactionsPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
                 ${periodMode === p.key
                   ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
               {p.label}
             </button>
           ))}
@@ -218,11 +218,11 @@ export default function TransactionsPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar size={14} className="text-slate-400 flex-shrink-0" />
             <input type="date"
-              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
               value={customStart} onChange={e => setCustomStart(e.target.value)} />
             <span className="text-slate-400 text-sm">até</span>
             <input type="date"
-              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
               value={customEnd} onChange={e => setCustomEnd(e.target.value)} />
           </div>
         )}
