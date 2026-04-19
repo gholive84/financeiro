@@ -155,9 +155,12 @@ export default function TransactionsPage() {
     load();
   };
 
-  const filtered = transactions.filter(t =>
-    !search || t.description.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = transactions.filter(t => {
+    if (!search) return true;
+    const q = search.toLowerCase().replace(',', '.');
+    const amountStr = t.amount.toFixed(2);
+    return t.description.toLowerCase().includes(search.toLowerCase()) || amountStr.includes(q);
+  });
 
   const handlePeriodChange = (key) => {
     setPeriodMode(key);
