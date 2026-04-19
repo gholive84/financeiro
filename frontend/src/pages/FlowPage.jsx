@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, CreditCard, Pencil, Scissors, RotateCcw, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, CreditCard, Pencil, Scissors, RotateCcw, Target, Plus } from 'lucide-react';
 import api from '../services/api';
 import TransactionForm from '../components/Transactions/TransactionForm';
 
@@ -21,6 +21,7 @@ function FlowGeral({ year }) {
   const [cutTxs, setCutTxs] = useState(new Map());
   // budgetMap: { [category_id]: { [month]: { amount_planned, amount_spent } } }
   const [budgetMap, setBudgetMap] = useState({});
+  const [showNewTx, setShowNewTx] = useState(false);
 
   const getCatKey = (cat) => `${cat.category_id}_${cat.is_installment ? 1 : 0}_${cat.expense_nature}`;
 
@@ -220,8 +221,8 @@ function FlowGeral({ year }) {
 
   return (
     <div className="space-y-3">
-      {/* Regime toggle */}
-      <div className="flex items-center gap-3">
+      {/* Regime toggle + Nova Transação */}
+      <div className="flex items-center gap-3 flex-wrap">
         <span className="text-xs text-slate-400 font-medium">Regime:</span>
         <div className="flex rounded-lg overflow-hidden border border-slate-200 text-xs font-semibold">
           <button onClick={() => setMode('accrual')}
@@ -238,6 +239,11 @@ function FlowGeral({ year }) {
             Despesas de cartão contam no mês seguinte ao lançamento
           </span>
         )}
+        <div className="flex-1" />
+        <button onClick={() => setShowNewTx(true)}
+          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+          <Plus size={13} /> Nova transação
+        </button>
       </div>
 
     <div className="flex gap-6">
@@ -440,6 +446,23 @@ function FlowGeral({ year }) {
               initial={editTx}
               onSave={handleEditSave}
               onCancel={() => setEditTx(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {showNewTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-100">Nova transação</h2>
+              <button onClick={() => setShowNewTx(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                <X size={16} className="text-slate-400" />
+              </button>
+            </div>
+            <TransactionForm
+              onSave={() => { setShowNewTx(false); setRefreshKey(k => k + 1); }}
+              onCancel={() => setShowNewTx(false)}
             />
           </div>
         </div>

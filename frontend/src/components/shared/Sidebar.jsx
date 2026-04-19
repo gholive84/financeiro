@@ -10,9 +10,9 @@ import { useAuth } from '../../context/AuthContext';
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/ai', icon: Sparkles, label: 'Lançar com IA', highlight: true },
+  { to: '/flow', icon: TrendingUp, label: 'Fluxo Mensal' },
   { to: '/calendar', icon: Calendar, label: 'Calendário' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
-  { to: '/flow', icon: TrendingUp, label: 'Fluxo Mensal' },
   { to: '/accounts', icon: Wallet, label: 'Contas' },
   { to: '/credit-cards', icon: CreditCard, label: 'Cartões' },
   { to: '/categories', icon: Tag, label: 'Categorias' },
