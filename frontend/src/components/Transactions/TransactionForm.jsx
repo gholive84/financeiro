@@ -31,6 +31,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [allTags, setAllTags] = useState([]);
   const [updateRemaining, setUpdateRemaining] = useState(false);
+  const [installmentMode, setInstallmentMode] = useState('total'); // 'total' | 'parcela'
 
   useEffect(() => {
     loadCategories(); loadAccounts(); loadCreditCards();
@@ -58,9 +59,15 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
     e.preventDefault();
     setLoading(true);
     try {
+      const numInst = parseInt(form.installments) || 1;
+      const rawAmount = parseFloat(form.amount) || 0;
+      const finalAmount = (numInst > 1 && installmentMode === 'parcela')
+        ? parseFloat((rawAmount * numInst).toFixed(2))
+        : rawAmount;
+
       const payload = {
         ...form,
-        amount: parseFloat(form.amount),
+        amount: finalAmount,
         account_id: form.credit_card_id ? null : (form.account_id || null),
         credit_card_id: form.credit_card_id || null,
         category_id: form.category_id || null,
@@ -182,20 +189,44 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         </select>
       </div>
 
-      {/* Parcelas — cartão, despesa, sem recorrente */}
+      {/* Parcelas — cartão, despesa, novo, sem recorrente */}
       {form.credit_card_id && form.type === 'expense' && isNew && !isFixed && (
-        <div>
-          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Parcelas</label>
-          <select
-            className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-            value={form.installments} onChange={e => set('installments', parseInt(e.target.value))}>
-            <option value={1}>À vista (1x)</option>
-            {[2,3,4,5,6,7,8,9,10,11,12,18,24].map(n => (
-              <option key={n} value={n}>{n}x {form.amount ? `de R$ ${(parseFloat(form.amount) / n).toFixed(2).replace('.', ',')}` : ''}</option>
-            ))}
-          </select>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-600 p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-600 dark:text-slate-300">Parcelar em</span>
+            <input type="number" min={1} max={60}
+              className="w-20 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
+              value={form.installments}
+              onChange={e => set('installments', Math.max(1, parseInt(e.target.value) || 1))} />
+            <span className="text-sm text-slate-600 dark:text-slate-300">vez(es)</span>
+          </div>
+
           {form.installments > 1 && (
-            <p className="text-xs text-blue-500 mt-1">Serão criadas {form.installments} transações mensais automaticamente.</p>
+            <>
+              <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600 text-xs font-medium">
+                <button type="button"
+                  onClick={() => setInstallmentMode('total')}
+                  className={`flex-1 py-1.5 transition-colors ${installmentMode === 'total' ? 'bg-purple-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                  Valor total
+                </button>
+                <button type="button"
+                  onClick={() => setInstallmentMode('parcela')}
+                  className={`flex-1 py-1.5 transition-colors ${installmentMode === 'parcela' ? 'bg-purple-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                  Valor da parcela
+                </button>
+              </div>
+              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                {(() => {
+                  const v = parseFloat(form.amount) || 0;
+                  const n = parseInt(form.installments) || 1;
+                  if (installmentMode === 'total') {
+                    return `${n}× de R$ ${(v / n).toFixed(2).replace('.', ',')}`;
+                  } else {
+                    return `Total: R$ ${(v * n).toFixed(2).replace('.', ',')}`;
+                  }
+                })()}
+              </p>
+            </>
           )}
         </div>
       )}
