@@ -105,7 +105,7 @@ router.get('/expenses-chart', async (req, res, next) => {
 
     res.json({
       month, year,
-      data: rows.map(r => ({ category: r.category, color: r.color, total: parseFloat(r.total) })),
+      data: rows.map(r => ({ category_id: r.category_id, category: r.category, color: r.color, total: parseFloat(r.total) })),
     });
   } catch (err) { next(err); }
 });
