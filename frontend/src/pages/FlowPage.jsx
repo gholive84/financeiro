@@ -22,8 +22,10 @@ function FlowGeral({ year }) {
       .finally(() => setLoading(false));
   }, [year]);
 
-  const expenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense').sort((a, b) => b.total - a.total), [data]);
-  const incomes  = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total),  [data]);
+  const incomes       = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total), [data]);
+  const fixedExpenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature === 'fixed').sort((a, b) => b.total - a.total), [data]);
+  const varExpenses   = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature !== 'fixed').sort((a, b) => b.total - a.total), [data]);
+  const expenses      = useMemo(() => [...fixedExpenses, ...varExpenses], [fixedExpenses, varExpenses]);
 
   const monthTotals = useMemo(() => {
     const exp = {}, inc = {};
@@ -55,6 +57,9 @@ function FlowGeral({ year }) {
 
   function Section({ title, rows, type, color }) {
     if (!rows.length) return null;
+    const secTotals = {};
+    for (let m = 1; m <= 12; m++) secTotals[m] = rows.reduce((s, c) => s + (c.months[m] || 0), 0);
+    const secTotal = rows.reduce((s, c) => s + c.total, 0);
     return (
       <>
         <tr>
@@ -62,7 +67,7 @@ function FlowGeral({ year }) {
             style={{ color, backgroundColor: color + '11' }}>{title}</td>
         </tr>
         {rows.map(cat => (
-          <tr key={`${cat.category_type}_${cat.category_id}`} className="hover:bg-slate-50 border-b border-slate-50">
+          <tr key={`${cat.category_type}_${cat.expense_nature}_${cat.category_id}`} className="hover:bg-slate-50 border-b border-slate-50">
             <td className="px-3 py-2 text-xs text-slate-700 font-medium whitespace-nowrap sticky left-0 bg-white z-10 min-w-[160px] max-w-[200px] truncate">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.category_color }} />
@@ -82,11 +87,11 @@ function FlowGeral({ year }) {
           <td className="px-3 py-2 text-xs font-bold text-slate-600 sticky left-0 bg-slate-50 z-10">Total {title}</td>
           {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
             <td key={m} className={`px-2 py-2 text-right text-xs font-bold whitespace-nowrap ${type === 'expense' ? 'text-red-700' : 'text-green-700'}`}>
-              {fmt(type === 'expense' ? monthTotals.exp[m] : monthTotals.inc[m])}
+              {fmt(secTotals[m])}
             </td>
           ))}
           <td className={`px-3 py-2 text-right text-xs font-bold whitespace-nowrap ${type === 'expense' ? 'text-red-700' : 'text-green-700'}`}>
-            {fmt(rows.reduce((s, c) => s + c.total, 0))}
+            {fmt(secTotal)}
           </td>
         </tr>
       </>
@@ -109,8 +114,9 @@ function FlowGeral({ year }) {
             </tr>
           </thead>
           <tbody>
-            <Section title="Receitas" rows={incomes}  type="income"  color="#16a34a" />
-            <Section title="Despesas" rows={expenses} type="expense" color="#dc2626" />
+            <Section title="Receitas"          rows={incomes}       type="income"  color="#16a34a" />
+            <Section title="Despesas Fixas"    rows={fixedExpenses} type="expense" color="#7c3aed" />
+            <Section title="Despesas Variáveis" rows={varExpenses}  type="expense" color="#dc2626" />
             {(incomes.length > 0 || expenses.length > 0) && (
               <tr className="border-t-2 border-slate-300 bg-slate-50">
                 <td className="px-3 py-3 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10">Saldo</td>
@@ -135,6 +141,7 @@ function FlowGeral({ year }) {
         {expenses.length === 0 && incomes.length === 0 && (
           <p className="text-center text-slate-400 py-16 text-sm">Nenhuma transação encontrada para {year}.</p>
         )}
+
       </div>
 
       {selected && (

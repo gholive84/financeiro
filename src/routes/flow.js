@@ -10,6 +10,7 @@ router.get('/monthly', async (req, res, next) => {
     const [rows] = await db.query(`
       SELECT
         t.type as tx_type,
+        COALESCE(t.expense_nature, 'variable') as expense_nature,
         COALESCE(c.id, 0) as category_id,
         COALESCE(pc.name, c.name, 'Sem categoria') as category_name,
         CASE WHEN pc.id IS NOT NULL THEN c.name ELSE NULL END as sub_name,
@@ -20,14 +21,14 @@ router.get('/monthly', async (req, res, next) => {
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN categories pc ON c.parent_id = pc.id
       WHERE YEAR(t.date) = ?
-      GROUP BY t.type, c.id, MONTH(t.date)
+      GROUP BY t.type, t.expense_nature, c.id, MONTH(t.date)
       ORDER BY t.type DESC, COALESCE(pc.name, c.name, 'Sem categoria'), c.name, month
     `, [year]);
 
-    // Build map: key = "type_categoryId"
+    // Build map: key = "type_nature_categoryId"
     const catMap = {};
     for (const row of rows) {
-      const key = `${row.tx_type}_${row.category_id}`;
+      const key = `${row.tx_type}_${row.expense_nature}_${row.category_id}`;
       if (!catMap[key]) {
         const label = row.sub_name
           ? `${row.category_name} › ${row.sub_name}`
@@ -37,6 +38,7 @@ router.get('/monthly', async (req, res, next) => {
           category_name: label,
           category_color: row.category_color,
           category_type: row.tx_type,
+          expense_nature: row.expense_nature,
           months: { 1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0 },
         };
       }
