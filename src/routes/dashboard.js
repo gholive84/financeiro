@@ -7,8 +7,8 @@ router.get('/', async (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   try {
     const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
+    const month = parseInt(req.query.month) || (now.getMonth() + 1);
+    const year  = parseInt(req.query.year)  || now.getFullYear();
 
     // Total balance
     const [[{ total_balance }]] = await db.query('SELECT COALESCE(SUM(balance), 0) as total_balance FROM accounts');

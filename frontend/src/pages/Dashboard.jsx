@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Wallet, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import ProgressBar from '../components/shared/ProgressBar';
@@ -21,15 +21,30 @@ function StatCard({ label, value, icon: Icon, color, sub }) {
 }
 
 export default function Dashboard() {
+  const now = new Date();
+  const [navMonth, setNavMonth] = useState(now.getMonth() + 1);
+  const [navYear,  setNavYear]  = useState(now.getFullYear());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
 
+  const navigate = (delta) => {
+    setNavMonth(m => {
+      let nm = m + delta, ny = navYear;
+      if (nm > 12) { nm = 1;  ny++; }
+      if (nm < 1)  { nm = 12; ny--; }
+      setNavYear(ny);
+      return nm;
+    });
+  };
+
   useEffect(() => {
     setLoading(true);
     setData(null);
-    api.get(`/dashboard?_=${Date.now()}`).then(r => setData(r.data)).finally(() => setLoading(false));
-  }, [location.key]);
+    api.get(`/dashboard?month=${navMonth}&year=${navYear}&_=${Date.now()}`)
+      .then(r => setData(r.data))
+      .finally(() => setLoading(false));
+  }, [navMonth, navYear, location.key]);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Carregando...</div>;
   if (!data) return null;
@@ -38,11 +53,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Dashboard</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          {monthNames[data.monthly.month - 1]} {data.monthly.year}
-        </p>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(-1)}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            <ChevronLeft size={16} className="text-slate-600 dark:text-slate-300" />
+          </button>
+          <span className="text-base font-bold text-slate-800 dark:text-slate-100 w-28 text-center">
+            {monthNames[navMonth - 1]} {navYear}
+          </span>
+          <button onClick={() => navigate(1)}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            <ChevronRight size={16} className="text-slate-600 dark:text-slate-300" />
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
