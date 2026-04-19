@@ -50,7 +50,7 @@ function AppLayout() {
             <span className="text-lg font-bold text-blue-600">financeiro</span>
           </header>
           <main className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-6xl">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/ai" element={<AILaunchPage />} />
