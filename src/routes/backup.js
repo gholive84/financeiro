@@ -11,15 +11,16 @@ if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 // POST /api/backup — gera e salva no servidor
 router.post('/', adminOnly, async (req, res, next) => {
   try {
-    const [transactions]     = await db.query('SELECT * FROM transactions ORDER BY date DESC');
-    const [categories]       = await db.query('SELECT * FROM categories');
-    const [accounts]         = await db.query('SELECT * FROM accounts');
-    const [credit_cards]     = await db.query('SELECT * FROM credit_cards');
-    const [tags]             = await db.query('SELECT * FROM tags');
-    const [transaction_tags] = await db.query('SELECT * FROM transaction_tags');
-    const [budgets]          = await db.query('SELECT * FROM budgets');
-    const [savings]          = await db.query('SELECT * FROM savings');
-    const [users]            = await db.query('SELECT id, username, name, role, created_at FROM users');
+    const [transactions]      = await db.query('SELECT * FROM transactions ORDER BY date DESC');
+    const [categories]        = await db.query('SELECT * FROM categories');
+    const [accounts]          = await db.query('SELECT * FROM accounts');
+    const [credit_cards]      = await db.query('SELECT * FROM credit_cards');
+    const [tags]              = await db.query('SELECT * FROM tags');
+    const [transaction_tags]  = await db.query('SELECT * FROM transaction_tags');
+    const [budgets]           = await db.query('SELECT * FROM budgets');
+    const [savings_boxes]     = await db.query('SELECT * FROM savings_boxes');
+    const [savings_movements] = await db.query('SELECT * FROM savings_movements');
+    const [users]             = await db.query('SELECT id, username, name, role, created_at FROM users');
 
     const counts = {
       transactions: transactions.length,
@@ -28,15 +29,15 @@ router.post('/', adminOnly, async (req, res, next) => {
       credit_cards: credit_cards.length,
       tags: tags.length,
       budgets: budgets.length,
-      savings: savings.length,
-      users: users.length,
+      caixinhas: savings_boxes.length,
+      usuarios: users.length,
     };
 
     const backup = {
       exported_at: new Date().toISOString(),
       version: 1,
       counts,
-      data: { transactions, categories, accounts, credit_cards, tags, transaction_tags, budgets, savings, users },
+      data: { transactions, categories, accounts, credit_cards, tags, transaction_tags, budgets, savings_boxes, savings_movements, users },
     };
 
     const date = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
