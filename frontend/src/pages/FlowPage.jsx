@@ -22,10 +22,11 @@ function FlowGeral({ year }) {
       .finally(() => setLoading(false));
   }, [year]);
 
-  const incomes       = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total), [data]);
-  const fixedExpenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature === 'fixed').sort((a, b) => b.total - a.total), [data]);
-  const varExpenses   = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature !== 'fixed').sort((a, b) => b.total - a.total), [data]);
-  const expenses      = useMemo(() => [...fixedExpenses, ...varExpenses], [fixedExpenses, varExpenses]);
+  const incomes             = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total), [data]);
+  const fixedExpenses       = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature === 'fixed').sort((a, b) => b.total - a.total), [data]);
+  const installmentExpenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature !== 'fixed' && c.is_installment).sort((a, b) => b.total - a.total), [data]);
+  const varExpenses         = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature !== 'fixed' && !c.is_installment).sort((a, b) => b.total - a.total), [data]);
+  const expenses            = useMemo(() => [...fixedExpenses, ...installmentExpenses, ...varExpenses], [fixedExpenses, installmentExpenses, varExpenses]);
 
   const monthTotals = useMemo(() => {
     const exp = {}, inc = {};
@@ -114,9 +115,10 @@ function FlowGeral({ year }) {
             </tr>
           </thead>
           <tbody>
-            <Section title="Receitas"          rows={incomes}       type="income"  color="#16a34a" />
-            <Section title="Despesas Fixas"    rows={fixedExpenses} type="expense" color="#7c3aed" />
-            <Section title="Despesas Variáveis" rows={varExpenses}  type="expense" color="#dc2626" />
+            <Section title="Receitas"             rows={incomes}             type="income"  color="#16a34a" />
+            <Section title="Despesas Fixas"       rows={fixedExpenses}       type="expense" color="#7c3aed" />
+            <Section title="Despesas Parceladas"  rows={installmentExpenses} type="expense" color="#2563eb" />
+            <Section title="Despesas Variáveis"   rows={varExpenses}         type="expense" color="#dc2626" />
             {(incomes.length > 0 || expenses.length > 0) && (
               <tr className="border-t-2 border-slate-300 bg-slate-50">
                 <td className="px-3 py-3 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10">Saldo</td>
