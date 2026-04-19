@@ -85,14 +85,14 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Tipo */}
-      <div className="flex rounded-xl overflow-hidden border border-slate-200">
+      <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600">
         {['expense', 'income'].map(t => (
           <button
             type="button" key={t}
             className={`flex-1 py-2 text-sm font-semibold transition-colors
               ${form.type === t
                 ? t === 'expense' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-                : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-600'}`}
             onClick={() => set('type', t)}
           >
             {t === 'expense' ? 'Despesa' : 'Receita'}
@@ -102,25 +102,25 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
 
       <input
         required placeholder="Descrição"
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.description} onChange={e => set('description', e.target.value)}
       />
 
       <div className="grid grid-cols-2 gap-3">
         <input
           required type="number" step="0.01" min="0.01" placeholder="Valor (R$)"
-          className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
           value={form.amount} onChange={e => set('amount', e.target.value)}
         />
         <input
           required type="date"
-          className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
           value={form.date} onChange={e => set('date', e.target.value)}
         />
       </div>
 
       <select
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.category_id} onChange={e => set('category_id', e.target.value)}
       >
         <option value="">Categoria (opcional)</option>
@@ -143,7 +143,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
       {/* Pagamento */}
       <div className="grid grid-cols-2 gap-3">
         <select
-          className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
           value={form.account_id}
           onChange={e => { set('account_id', e.target.value); if (e.target.value) { set('credit_card_id', ''); set('installments', 1); } }}
           disabled={!!form.credit_card_id}
@@ -152,7 +152,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
           {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
         <select
-          className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
           value={form.credit_card_id}
           onChange={e => { set('credit_card_id', e.target.value); if (e.target.value) { set('account_id', ''); set('expense_nature', null); } }}
           disabled={!!form.account_id}
@@ -165,9 +165,9 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
       {/* Parcelas — só com cartão, só ao criar */}
       {form.credit_card_id && isNew && (
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Parcelas</label>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Parcelas</label>
           <select
-            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={form.installments} onChange={e => set('installments', parseInt(e.target.value))}>
             <option value={1}>À vista (1x)</option>
             {[2,3,4,5,6,7,8,9,10,11,12,18,24].map(n => (
@@ -184,14 +184,14 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
 
       {/* Despesa fixa — só em despesas sem cartão */}
       {form.type === 'expense' && !form.credit_card_id && (
-        <div className={`rounded-xl border p-3 space-y-3 transition-colors ${isFixed ? 'border-violet-200 bg-violet-50' : 'border-slate-200'}`}>
+        <div className={`rounded-xl border p-3 space-y-3 transition-colors ${isFixed ? 'border-violet-200 bg-violet-50' : 'border-slate-200 dark:border-slate-600'}`}>
           <button type="button" onClick={() => set('expense_nature', isFixed ? null : 'fixed')}
             className="flex items-center gap-2 w-full text-left">
             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isFixed ? 'bg-violet-600 border-violet-600' : 'border-slate-300'}`}>
               {isFixed && <span className="w-2 h-2 bg-white rounded-sm block" />}
             </div>
             <RepeatIcon size={14} className={isFixed ? 'text-violet-600' : 'text-slate-400'} />
-            <span className={`text-sm font-medium ${isFixed ? 'text-violet-700' : 'text-slate-600'}`}>
+            <span className={`text-sm font-medium ${isFixed ? 'text-violet-700' : 'text-slate-600 dark:text-slate-300'}`}>
               Despesa fixa (recorrente)
             </span>
           </button>
@@ -202,19 +202,19 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
                 <input type="radio" name="fixed_type" checked={form.fixed_months === 0}
                   onChange={() => set('fixed_months', 0)}
                   className="accent-violet-600" />
-                <span className="text-sm text-slate-700">Todos os meses (12 meses)</span>
+                <span className="text-sm text-slate-700 dark:text-slate-200">Todos os meses (12 meses)</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="fixed_type" checked={form.fixed_months > 0}
                   onChange={() => set('fixed_months', form.fixed_months > 0 ? form.fixed_months : 3)}
                   className="accent-violet-600" />
-                <span className="text-sm text-slate-700">Por</span>
+                <span className="text-sm text-slate-700 dark:text-slate-200">Por</span>
                 <input type="number" min={1} max={60}
-                  className="w-16 border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="w-16 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
                   value={form.fixed_months > 0 ? form.fixed_months : 3}
                   onChange={e => set('fixed_months', parseInt(e.target.value) || 1)}
                   onClick={() => { if (form.fixed_months === 0) set('fixed_months', 3); }} />
-                <span className="text-sm text-slate-700">meses</span>
+                <span className="text-sm text-slate-700 dark:text-slate-200">meses</span>
               </label>
               <p className="text-xs text-violet-600">
                 {isNew
@@ -227,7 +227,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
       )}
 
       <select
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.status} onChange={e => set('status', e.target.value)}
       >
         <option value="paid">Pago</option>
@@ -237,7 +237,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
       {/* Tags */}
       {allTags.length > 0 && (
         <div>
-          <label className="text-xs text-slate-500 mb-2 flex items-center gap-1 block">
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1 block">
             <Tag size={11} /> Tags (opcional)
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -245,7 +245,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
               const active = form.tag_ids.includes(tag.id);
               return (
                 <button type="button" key={tag.id} onClick={() => toggleTag(tag.id)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${active ? 'border-transparent' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${active ? 'border-transparent' : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-500'}`}
                   style={active ? { backgroundColor: tag.color + '22', color: tag.color, borderColor: tag.color + '44' } : {}}>
                   {active && '✓ '}{tag.name}
                 </button>
@@ -257,7 +257,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
 
       <textarea
         placeholder="Observações (opcional)" rows={2}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+        className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.notes} onChange={e => set('notes', e.target.value)}
       />
 

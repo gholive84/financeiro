@@ -18,7 +18,7 @@ function Badge({ children, style, className = '' }) {
 }
 
 function AccountTag({ name }) {
-  return <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-400 font-medium">{name}</span>;
+  return <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 font-medium">{name}</span>;
 }
 
 export default function TransactionList({ transactions, onEdit, onDelete, onDetail, selectedIds = [], onToggleSelect }) {
@@ -35,7 +35,7 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
         const isFixed = t.expense_nature === 'fixed';
         return (
           <div key={t.id}
-            className={`bg-white rounded-xl border px-4 py-3 hover:shadow-sm transition-shadow cursor-pointer flex items-center gap-3 ${isSelected ? 'border-blue-300 bg-blue-50/40' : 'border-slate-100'}`}
+            className={`bg-white dark:bg-slate-800 rounded-xl border px-4 py-3 hover:shadow-sm transition-shadow cursor-pointer flex items-center gap-3 ${isSelected ? 'border-blue-300 dark:border-blue-600 bg-blue-50/40 dark:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700'}`}
             onClick={() => selecting ? onToggleSelect?.(t.id) : onDetail?.(t)}>
 
             <div
@@ -54,10 +54,10 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
 
             <div className="flex-1 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                <p className="text-sm font-medium text-slate-800 truncate">{t.description}</p>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{t.description}</p>
 
                 <div className="hidden sm:flex items-center gap-1.5 flex-wrap flex-shrink-0">
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
                     {String(t.date).split('T')[0].split('-').reverse().join('/')}
                   </span>
                   {t.category && (
@@ -84,7 +84,7 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
                   ))}
                 </div>
 
-                <p className="sm:hidden text-xs text-slate-400 mt-0.5">
+                <p className="sm:hidden text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                   {String(t.date).split('T')[0].split('-').reverse().join('/')}
                   {t.user && <span className="ml-1 text-slate-300">· @{t.user.username}</span>}
                 </p>

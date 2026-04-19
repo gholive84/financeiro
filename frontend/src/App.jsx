@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -23,9 +23,14 @@ function AppLayout() {
   const { user, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  useEffect(() => {
+    const theme = localStorage.getItem('theme');
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, []);
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -35,12 +40,12 @@ function AppLayout() {
 
   return (
     <AppProvider>
-      <div className="flex h-screen overflow-hidden bg-slate-50">
+      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-100">
-            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-slate-100">
-              <Menu size={20} className="text-slate-600" />
+          <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
+            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+              <Menu size={20} className="text-slate-600 dark:text-slate-300" />
             </button>
             <span className="text-lg font-bold text-blue-600">financeiro</span>
           </header>

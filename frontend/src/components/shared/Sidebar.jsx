@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, ArrowLeftRight, CreditCard,
   PieChart, PiggyBank, Wallet, Tag, Sparkles, Users, LogOut, X, Shield, User, Upload,
-  TrendingUp, Hash,
+  TrendingUp, Hash, Moon, Sun,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -24,22 +24,30 @@ const nav = [
 
 export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuth();
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+  };
 
   return (
     <>
       {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={onClose} />}
 
       <aside className={`
-        fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 z-40 flex flex-col
+        fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-800 border-r border-slate-100 dark:border-slate-700 z-40 flex flex-col
         transition-transform duration-300
         ${open ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:z-auto
       `}>
         {/* Logo */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-700">
           <span className="text-xl font-bold text-blue-600">financeiro</span>
-          <button className="lg:hidden p-1 rounded hover:bg-slate-100" onClick={onClose}>
-            <X size={18} />
+          <button className="lg:hidden p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700" onClick={onClose}>
+            <X size={18} className="text-slate-600 dark:text-slate-300" />
           </button>
         </div>
 
@@ -50,10 +58,10 @@ export default function Sidebar({ open, onClose }) {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
                 ${isActive
-                  ? 'bg-blue-50 text-blue-600'
+                  ? 'bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400'
                   : highlight
-                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'text-blue-600 bg-blue-50 dark:bg-slate-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-600'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
                 }`
               }>
               <Icon size={18} /> {label}
@@ -65,7 +73,7 @@ export default function Sidebar({ open, onClose }) {
             <NavLink to="/users" onClick={onClose}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
-                ${isActive ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`
+                ${isActive ? 'bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'}`
               }>
               <Users size={18} /> Usuários
             </NavLink>
@@ -73,18 +81,23 @@ export default function Sidebar({ open, onClose }) {
         </nav>
 
         {/* Usuário logado */}
-        <div className="px-4 py-4 border-t border-slate-100">
+        <div className="px-4 py-4 border-t border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl mb-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-              {user?.role === 'admin' ? <Shield size={15} className="text-blue-600" /> : <User size={15} className="text-slate-500" />}
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+              {user?.role === 'admin' ? <Shield size={15} className="text-blue-600" /> : <User size={15} className="text-slate-500 dark:text-slate-400" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">{user?.name || user?.username}</p>
-              <p className="text-xs text-slate-400 truncate">@{user?.username}</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{user?.name || user?.username}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 truncate">@{user?.username}</p>
             </div>
           </div>
+          <button onClick={toggleTheme}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-medium mb-1">
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            {isDark ? 'Modo claro' : 'Modo escuro'}
+          </button>
           <button onClick={logout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors font-medium">
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors font-medium">
             <LogOut size={16} /> Sair
           </button>
         </div>
