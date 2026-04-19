@@ -16,13 +16,20 @@ function FlowGeral({ year }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [editTx, setEditTx] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [cutIds, setCutIds] = useState(new Set());
+  // cutTxs: Map<id, { tx, catKey, month }>
+  const [cutTxs, setCutTxs] = useState(new Map());
 
-  const toggleCut = (id) => setCutIds(s => {
-    const n = new Set(s);
-    n.has(id) ? n.delete(id) : n.add(id);
-    return n;
-  });
+  const getCatKey = (cat) => `${cat.category_id}_${cat.is_installment ? 1 : 0}_${cat.expense_nature}`;
+
+  const toggleCut = (t) => {
+    const catKey = getCatKey(selected.category);
+    const month = selected.month;
+    setCutTxs(m => {
+      const n = new Map(m);
+      n.has(t.id) ? n.delete(t.id) : n.set(t.id, { tx: t, catKey, month });
+      return n;
+    });
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -37,6 +44,15 @@ function FlowGeral({ year }) {
   const installmentExpenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.is_installment).sort((a, b) => b.total - a.total), [data]);
   const varExpenses         = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature !== 'fixed' && !c.is_installment).sort((a, b) => b.total - a.total), [data]);
   const expenses            = useMemo(() => [...fixedExpenses, ...installmentExpenses, ...varExpenses], [fixedExpenses, installmentExpenses, varExpenses]);
+
+  // total cuts per month across all expense categories (for Saldo row)
+  const cutsPerMonth = useMemo(() => {
+    const acc = {};
+    for (let i = 1; i <= 12; i++) acc[i] = 0;
+    for (const { tx, month } of cutTxs.values())
+      if (tx.type === 'expense') acc[month] += tx.amount;
+    return acc;
+  }, [cutTxs]);
 
   const monthTotals = useMemo(() => {
     const exp = {}, inc = {};
@@ -74,50 +90,93 @@ function FlowGeral({ year }) {
     if (selected) fetchDetail(selected.category, selected.month);
   };
 
-  const cellClass = (type, value) => {
-    if (value === 0) return 'text-slate-300 text-xs';
-    return type === 'expense'
-      ? 'text-red-600 font-medium text-xs cursor-pointer hover:bg-red-50 rounded'
-      : 'text-green-600 font-medium text-xs cursor-pointer hover:bg-green-50 rounded';
+  const cutForCatMonth = (cat, m) => {
+    const ck = getCatKey(cat);
+    let sum = 0;
+    for (const { tx, catKey, month } of cutTxs.values())
+      if (catKey === ck && month === m) sum += tx.amount;
+    return sum;
   };
 
   function Section({ title, rows, type, color }) {
     if (!rows.length) return null;
-    const secTotals = {};
-    for (let m = 1; m <= 12; m++) secTotals[m] = rows.reduce((s, c) => s + (c.months[m] || 0), 0);
-    const secTotal = rows.reduce((s, c) => s + c.total, 0);
+    const secTotals = {}, secCuts = {};
+    for (let m = 1; m <= 12; m++) {
+      secTotals[m] = rows.reduce((s, c) => s + (c.months[m] || 0), 0);
+      secCuts[m]   = rows.reduce((s, c) => s + cutForCatMonth(c, m), 0);
+    }
+    const secTotal  = rows.reduce((s, c) => s + c.total, 0);
+    const totalCuts = Object.values(secCuts).reduce((s, v) => s + v, 0);
+
     return (
       <>
         <tr>
           <td colSpan={14} className="px-3 py-2 text-xs font-bold uppercase tracking-wider"
             style={{ color, backgroundColor: color + '11' }}>{title}</td>
         </tr>
-        {rows.map(cat => (
-          <tr key={`${cat.category_type}_${cat.expense_nature}_${cat.category_id}`} className="hover:bg-slate-50 border-b border-slate-50">
-            <td className="px-3 py-2 text-xs text-slate-700 font-medium whitespace-nowrap sticky left-0 bg-white z-10 min-w-[160px] max-w-[200px] truncate">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.category_color }} />
-                {cat.category_name}
+        {rows.map(cat => {
+          const catCutTotal = Array.from({length:12},(_,i)=>i+1).reduce((s,m)=>s+cutForCatMonth(cat,m),0);
+          return (
+            <tr key={`${cat.category_type}_${cat.expense_nature}_${cat.category_id}`} className="hover:bg-slate-50 border-b border-slate-50">
+              <td className="px-3 py-2 text-xs text-slate-700 font-medium whitespace-nowrap sticky left-0 bg-white z-10 min-w-[160px] max-w-[200px] truncate">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.category_color }} />
+                  {cat.category_name}
+                </span>
+              </td>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                const orig = cat.months[m] || 0;
+                const cutAmt = cutForCatMonth(cat, m);
+                const display = orig - cutAmt;
+                const cls = orig === 0
+                  ? 'text-slate-300 text-xs'
+                  : cutAmt > 0
+                    ? 'text-emerald-600 font-medium text-xs cursor-pointer bg-emerald-50/70 rounded'
+                    : type === 'expense'
+                      ? 'text-red-600 font-medium text-xs cursor-pointer hover:bg-red-50 rounded'
+                      : 'text-green-600 font-medium text-xs cursor-pointer hover:bg-green-50 rounded';
+                return (
+                  <td key={m} className={`px-2 py-2 text-right whitespace-nowrap ${cls}`}
+                    onClick={() => handleCellClick(cat, m)}>
+                    {fmt(display)}
+                  </td>
+                );
+              })}
+              <td className={`px-3 py-2 text-right text-xs font-bold whitespace-nowrap ${catCutTotal > 0 ? 'text-emerald-700' : type === 'expense' ? 'text-red-700' : 'text-green-700'}`}>
+                {fmt(cat.total - catCutTotal)}
+              </td>
+            </tr>
+          );
+        })}
+        {totalCuts > 0 && (
+          <tr className="border-t border-emerald-100 bg-emerald-50/50">
+            <td className="px-3 py-1.5 sticky left-0 bg-emerald-50/50 z-10">
+              <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold italic">
+                <Scissors size={10} /> Cortes simulados
               </span>
             </td>
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-              <td key={m} className={`px-2 py-2 text-right whitespace-nowrap ${cellClass(type, cat.months[m])}`}
-                onClick={() => handleCellClick(cat, m)}>{fmt(cat.months[m])}</td>
+              <td key={m} className="px-2 py-1.5 text-right text-xs text-emerald-600 font-medium whitespace-nowrap">
+                {secCuts[m] > 0 ? `−${fmtFull(secCuts[m])}` : ''}
+              </td>
             ))}
-            <td className={`px-3 py-2 text-right text-xs font-bold whitespace-nowrap ${type === 'expense' ? 'text-red-700' : 'text-green-700'}`}>
-              {fmt(cat.total)}
+            <td className="px-3 py-1.5 text-right text-xs text-emerald-700 font-bold whitespace-nowrap">
+              −{fmtFull(totalCuts)}
             </td>
           </tr>
-        ))}
+        )}
         <tr className="border-t border-slate-200">
           <td className="px-3 py-2 text-xs font-bold text-slate-600 sticky left-0 bg-slate-50 z-10">Total {title}</td>
-          {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-            <td key={m} className={`px-2 py-2 text-right text-xs font-bold whitespace-nowrap ${type === 'expense' ? 'text-red-700' : 'text-green-700'}`}>
-              {fmt(secTotals[m])}
-            </td>
-          ))}
-          <td className={`px-3 py-2 text-right text-xs font-bold whitespace-nowrap ${type === 'expense' ? 'text-red-700' : 'text-green-700'}`}>
-            {fmt(secTotal)}
+          {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+            const adj = (secTotals[m] || 0) - (secCuts[m] || 0);
+            return (
+              <td key={m} className={`px-2 py-2 text-right text-xs font-bold whitespace-nowrap ${secCuts[m] > 0 ? 'text-emerald-700' : type === 'expense' ? 'text-red-700' : 'text-green-700'}`}>
+                {fmt(adj)}
+              </td>
+            );
+          })}
+          <td className={`px-3 py-2 text-right text-xs font-bold whitespace-nowrap ${totalCuts > 0 ? 'text-emerald-700' : type === 'expense' ? 'text-red-700' : 'text-green-700'}`}>
+            {fmt(secTotal - totalCuts)}
           </td>
         </tr>
       </>
@@ -148,7 +207,7 @@ function FlowGeral({ year }) {
               <tr className="border-t-2 border-slate-300 bg-slate-50">
                 <td className="px-3 py-3 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10">Saldo</td>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
-                  const balance = (monthTotals.inc[m] || 0) - (monthTotals.exp[m] || 0);
+                  const balance = (monthTotals.inc[m] || 0) - (monthTotals.exp[m] || 0) + (cutsPerMonth[m] || 0);
                   return (
                     <td key={m} className={`px-2 py-3 text-right text-xs font-bold whitespace-nowrap ${balance >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                       {balance === 0 ? '—' : `${balance > 0 ? '+' : ''}${fmtFull(balance)}`}
@@ -157,7 +216,8 @@ function FlowGeral({ year }) {
                 })}
                 <td className="px-3 py-3 text-right text-xs font-bold whitespace-nowrap text-slate-700">
                   {(() => {
-                    const total = incomes.reduce((s,c) => s+c.total,0) - expenses.reduce((s,c) => s+c.total,0);
+                    const totalCutsAll = Array.from(cutTxs.values()).filter(c => c.tx.type === 'expense').reduce((s, c) => s + c.tx.amount, 0);
+                    const total = incomes.reduce((s,c) => s+c.total,0) - expenses.reduce((s,c) => s+c.total,0) + totalCutsAll;
                     return total === 0 ? '—' : `${total > 0 ? '+' : ''}${fmtFull(total)}`;
                   })()}
                 </td>
@@ -168,14 +228,11 @@ function FlowGeral({ year }) {
         {expenses.length === 0 && incomes.length === 0 && (
           <p className="text-center text-slate-400 py-16 text-sm">Nenhuma transação encontrada para {year}.</p>
         )}
-
       </div>
 
       {selected && (() => {
-        const visibleTxs = detailTxs;
-        const originalTotal = visibleTxs.reduce((s, t) => s + t.amount, 0);
-        const cutTotal = visibleTxs.filter(t => cutIds.has(t.id)).reduce((s, t) => s + t.amount, 0);
-        const simTotal = originalTotal - cutTotal;
+        const originalTotal = detailTxs.reduce((s, t) => s + t.amount, 0);
+        const cutTotal = detailTxs.filter(t => cutTxs.has(t.id)).reduce((s, t) => s + t.amount, 0);
         const hasCuts = cutTotal > 0;
         return (
           <div className="w-80 flex-shrink-0 bg-white rounded-2xl border border-slate-100 p-5 h-fit max-h-[80vh] overflow-y-auto">
@@ -188,7 +245,7 @@ function FlowGeral({ year }) {
                 </p>
                 {hasCuts && (
                   <div className="mt-1 space-y-0.5">
-                    <p className="text-lg font-bold text-emerald-600">{fmtFull(simTotal)}</p>
+                    <p className="text-lg font-bold text-emerald-600">{fmtFull(originalTotal - cutTotal)}</p>
                     <p className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
                       <Scissors size={11} /> economia simulada de {fmtFull(cutTotal)}
                     </p>
@@ -200,8 +257,8 @@ function FlowGeral({ year }) {
               </button>
             </div>
 
-            {hasCuts && (
-              <button onClick={() => setCutIds(new Set())}
+            {cutTxs.size > 0 && (
+              <button onClick={() => setCutTxs(new Map())}
                 className="mb-3 text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors">
                 <RotateCcw size={11} /> resetar simulação
               </button>
@@ -209,14 +266,14 @@ function FlowGeral({ year }) {
 
             {detailLoading ? (
               <p className="text-slate-400 text-sm text-center py-6">Carregando...</p>
-            ) : visibleTxs.length === 0 ? (
+            ) : detailTxs.length === 0 ? (
               <p className="text-slate-400 text-sm text-center py-6">Nenhuma transação.</p>
             ) : (
               <div className="space-y-0.5">
-                {visibleTxs.map(t => {
-                  const cut = cutIds.has(t.id);
+                {detailTxs.map(t => {
+                  const cut = cutTxs.has(t.id);
                   return (
-                    <div key={t.id} className={`flex items-center gap-2 py-2 border-b border-slate-50 last:border-0 rounded-lg transition-colors ${cut ? 'opacity-40' : ''}`}>
+                    <div key={t.id} className={`flex items-center gap-2 py-2 border-b border-slate-50 last:border-0 transition-colors ${cut ? 'opacity-40' : ''}`}>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm text-slate-700 truncate font-medium ${cut ? 'line-through' : ''}`}>{t.description}</p>
                         <p className="text-xs text-slate-400">{String(t.date).split('T')[0].split('-').reverse().join('/')}</p>
@@ -224,7 +281,7 @@ function FlowGeral({ year }) {
                       <span className={`text-sm font-semibold flex-shrink-0 ${t.type === 'income' ? 'text-green-600' : 'text-red-500'} ${cut ? 'line-through' : ''}`}>
                         {t.type === 'income' ? '+' : '-'} {fmtFull(t.amount)}
                       </span>
-                      <button onClick={() => toggleCut(t.id)} title={cut ? 'Restaurar' : 'Simular corte'}
+                      <button onClick={() => toggleCut(t)} title={cut ? 'Restaurar' : 'Simular corte'}
                         className={`p-1.5 rounded-lg flex-shrink-0 transition-colors ${cut ? 'text-emerald-500 hover:bg-emerald-50' : 'text-slate-300 hover:text-orange-400 hover:bg-orange-50'}`}>
                         {cut ? <RotateCcw size={13} /> : <Scissors size={13} />}
                       </button>
