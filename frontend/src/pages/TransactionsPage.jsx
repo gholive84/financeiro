@@ -105,7 +105,7 @@ export default function TransactionsPage() {
   const [periodMode, setPeriodMode] = useState('month');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [filters, setFilters] = useState({ type: '', status: '', category_id: '', tag_id: '' });
+  const [filters, setFilters] = useState({ type: '', status: '', category_id: '', account_id: '', credit_card_id: '', tag_id: '' });
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkApplying, setBulkApplying] = useState(false);
@@ -125,6 +125,8 @@ export default function TransactionsPage() {
     if (filters.type) params.set('type', filters.type);
     if (filters.status) params.set('status', filters.status);
     if (filters.category_id) params.set('category_id', filters.category_id);
+    if (filters.account_id) params.set('account_id', filters.account_id);
+    if (filters.credit_card_id) params.set('credit_card_id', filters.credit_card_id);
     if (filters.tag_id) params.set('tag_id', filters.tag_id);
     const { data } = await api.get(`/transactions?${params}`);
     setTransactions(data);
@@ -267,6 +269,20 @@ export default function TransactionsPage() {
                 <option key={parent.id} value={parent.id}>{parent.name}</option>
               );
             })}
+          </select>
+          <select
+            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={filters.account_id} onChange={e => setFilters(f => ({ ...f, account_id: e.target.value, credit_card_id: '' }))}
+          >
+            <option value="">Todas as contas</option>
+            {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select
+            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={filters.credit_card_id} onChange={e => setFilters(f => ({ ...f, credit_card_id: e.target.value, account_id: '' }))}
+          >
+            <option value="">Todos os cartões</option>
+            {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}{c.bank ? ` · ${c.bank}` : ''}</option>)}
           </select>
         </div>
 
