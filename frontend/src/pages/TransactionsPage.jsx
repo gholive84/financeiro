@@ -268,6 +268,7 @@ export default function TransactionsPage() {
             value={filters.category_id} onChange={e => setFilters(f => ({ ...f, category_id: e.target.value }))}
           >
             <option value="">Todas as categorias</option>
+            <option value="none">— Sem categoria</option>
             {categories.filter(c => !c.parent_id).map(parent => {
               const subs = categories.filter(c => String(c.parent_id) === String(parent.id));
               return subs.length > 0 ? (
