@@ -22,8 +22,8 @@ function FlowGeral({ year }) {
       .finally(() => setLoading(false));
   }, [year]);
 
-  const expenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense'), [data]);
-  const incomes  = useMemo(() => data.categories.filter(c => c.category_type === 'income'),  [data]);
+  const expenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense').sort((a, b) => b.total - a.total), [data]);
+  const incomes  = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total),  [data]);
 
   const monthTotals = useMemo(() => {
     const exp = {}, inc = {};
@@ -213,6 +213,7 @@ function FlowCartoes({ year }) {
     <div className="flex gap-6">
       <div className="flex-1 space-y-6">
         {data.cards.map(card => {
+          const sortedCategories = [...card.categories].sort((a, b) => b.total - a.total);
           const cardTotal = card.categories.reduce((s, c) => s + c.total, 0);
           const monthTotals = {};
           for (let m = 1; m <= 12; m++) {
@@ -238,7 +239,7 @@ function FlowCartoes({ year }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {card.categories.map(cat => (
+                  {sortedCategories.map(cat => (
                     <tr key={cat.category_id} className="hover:bg-slate-50 border-b border-slate-50">
                       <td className="px-3 py-2 text-xs text-slate-700 font-medium whitespace-nowrap sticky left-0 bg-white z-10 min-w-[160px] max-w-[200px] truncate">
                         <span className="flex items-center gap-1.5">
