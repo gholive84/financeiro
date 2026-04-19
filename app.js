@@ -27,6 +27,7 @@ app.use('/api/ai', auth, require('./src/routes/ai'));
 app.use('/api/import', auth, require('./src/routes/import'));
 app.use('/api/tags', auth, require('./src/routes/tags'));
 app.use('/api/flow', auth, require('./src/routes/flow'));
+app.use('/api/backup', auth, require('./src/routes/backup'));
 
 // Serve frontend build in production
 const publicDir = path.join(__dirname, 'public');

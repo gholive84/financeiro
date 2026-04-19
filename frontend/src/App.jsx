@@ -18,6 +18,7 @@ import UsersPage from './pages/UsersPage';
 import ImportPage from './pages/ImportPage';
 import TagsPage from './pages/TagsPage';
 import FlowPage from './pages/FlowPage';
+import BackupPage from './pages/BackupPage';
 
 function AppLayout() {
   const { user, loading } = useAuth();
@@ -65,6 +66,7 @@ function AppLayout() {
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/tags" element={<TagsPage />} />
                 <Route path="/flow" element={<FlowPage />} />
+                <Route path="/backup" element={<BackupPage />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </div>

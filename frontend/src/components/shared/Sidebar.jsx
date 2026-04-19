@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, ArrowLeftRight, CreditCard,
   PieChart, PiggyBank, Wallet, Tag, Sparkles, Users, LogOut, X, Shield, User, Upload,
-  TrendingUp, Hash, Moon, Sun,
+  TrendingUp, Hash, Moon, Sun, Settings, ChevronDown, Database,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,9 +22,16 @@ const nav = [
   { to: '/import', icon: Upload, label: 'Importar' },
 ];
 
+const linkClass = (isActive) =>
+  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
+  ${isActive
+    ? 'bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400'
+    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'}`;
+
 export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const toggleTheme = () => {
     const next = !isDark;
@@ -68,15 +75,30 @@ export default function Sidebar({ open, onClose }) {
             </NavLink>
           ))}
 
-          {/* Usuários — admin only */}
+          {/* Configurações — admin only */}
           {user?.role === 'admin' && (
-            <NavLink to="/users" onClick={onClose}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
-                ${isActive ? 'bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'}`
-              }>
-              <Users size={18} /> Usuários
-            </NavLink>
+            <div>
+              <button
+                onClick={() => setSettingsOpen(o => !o)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
+                <Settings size={18} />
+                <span className="flex-1 text-left">Configurações</span>
+                <ChevronDown size={14} className={`transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {settingsOpen && (
+                <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-100 dark:border-slate-700 pl-3">
+                  <NavLink to="/users" onClick={onClose}
+                    className={({ isActive }) => linkClass(isActive)}>
+                    <Users size={16} /> Usuários
+                  </NavLink>
+                  <NavLink to="/backup" onClick={onClose}
+                    className={({ isActive }) => linkClass(isActive)}>
+                    <Database size={16} /> Backup
+                  </NavLink>
+                </div>
+              )}
+            </div>
           )}
         </nav>
 
