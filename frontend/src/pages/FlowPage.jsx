@@ -23,8 +23,8 @@ function FlowGeral({ year }) {
   }, [year]);
 
   const incomes             = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total), [data]);
-  const fixedExpenses       = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature === 'fixed').sort((a, b) => b.total - a.total), [data]);
-  const installmentExpenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature !== 'fixed' && c.is_installment).sort((a, b) => b.total - a.total), [data]);
+  const fixedExpenses       = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature === 'fixed' && !c.is_installment).sort((a, b) => b.total - a.total), [data]);
+  const installmentExpenses = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.is_installment).sort((a, b) => b.total - a.total), [data]);
   const varExpenses         = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature !== 'fixed' && !c.is_installment).sort((a, b) => b.total - a.total), [data]);
   const expenses            = useMemo(() => [...fixedExpenses, ...installmentExpenses, ...varExpenses], [fixedExpenses, installmentExpenses, varExpenses]);
 
