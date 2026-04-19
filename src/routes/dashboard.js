@@ -89,6 +89,7 @@ router.get('/expenses-chart', async (req, res, next) => {
 
     const [rows] = await db.query(`
       SELECT
+        t.category_id,
         COALESCE(c.name, 'Sem categoria') as category,
         COALESCE(c.color, '#94a3b8') as color,
         COALESCE(SUM(t.amount), 0) as total
