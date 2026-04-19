@@ -317,11 +317,93 @@ function FlowCartoes({ year }) {
   );
 }
 
+// ── Cartão Parcelas ───────────────────────────────────────────────────────────
+function FlowParcelas() {
+  const [data, setData] = useState({ cards: [] });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get('/flow/installments')
+      .then(r => setData(r.data))
+      .catch(() => setData({ cards: [] }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const fmtDate = (d) => String(d).split('T')[0].split('-').reverse().join('/');
+  const fmtBRL = (v) => `R$ ${parseFloat(v).toFixed(2).replace('.', ',')}`;
+
+  if (loading) return <p className="text-slate-400 text-sm text-center py-20">Carregando...</p>;
+  if (!data.cards.length) return <p className="text-center text-slate-400 py-16 text-sm">Nenhuma compra parcelada encontrada.</p>;
+
+  return (
+    <div className="space-y-6">
+      {data.cards.map(card => (
+        <div key={card.card_id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+          {/* Cabeçalho do cartão */}
+          <div className="flex items-center gap-2 px-5 py-3 border-b"
+            style={{ borderColor: card.card_color + '33', backgroundColor: card.card_color + '11' }}>
+            <CreditCard size={16} style={{ color: card.card_color }} />
+            <span className="font-semibold text-sm" style={{ color: card.card_color }}>{card.card_name}</span>
+            {card.card_bank && <span className="text-xs text-slate-400">· {card.card_bank}</span>}
+            <span className="ml-auto text-xs font-bold text-slate-500">{card.groups.length} parcelamento{card.groups.length !== 1 ? 's' : ''}</span>
+          </div>
+
+          {/* Lista de parcelamentos */}
+          <div className="divide-y divide-slate-50 dark:divide-slate-700">
+            {card.groups.map(g => {
+              const pct = Math.round((g.paid_count / g.installment_total) * 100);
+              return (
+                <div key={g.group_id} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{g.description}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {fmtDate(g.first_date)} → {fmtDate(g.last_date)}
+                      </p>
+                      <span className="inline-block mt-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
+                        style={{ backgroundColor: g.category_color + '22', color: g.category_color }}>
+                        {g.category_name}
+                      </span>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{fmtBRL(g.amount_per_installment)}<span className="text-xs font-normal text-slate-400">/mês</span></p>
+                      <p className="text-xs text-slate-400 mt-0.5">Total {fmtBRL(g.total_amount)}</p>
+                    </div>
+                  </div>
+
+                  {/* Progresso */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                      <span>{g.paid_count} paga{g.paid_count !== 1 ? 's' : ''} · {g.pending_count} pendente{g.pending_count !== 1 ? 's' : ''}</span>
+                      <span className="font-semibold">{g.paid_count}/{g.installment_total}x</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: card.card_color }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Página principal ──────────────────────────────────────────────────────────
 export default function FlowPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [tab, setTab] = useState('geral');
+
+  const tabs = [
+    { key: 'geral',     label: 'Geral' },
+    { key: 'cartoes',   label: 'Cartões' },
+    { key: 'parcelas',  label: 'Cartão Parcelas' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -330,22 +412,24 @@ export default function FlowPage() {
           <h1 className="text-2xl font-bold text-slate-800">Fluxo Mensal</h1>
           <p className="text-sm text-slate-400 mt-1">Receitas e despesas por categoria e mês.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setYear(y => y - 1)}
-            className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-            <ChevronLeft size={16} className="text-slate-600" />
-          </button>
-          <span className="text-lg font-bold text-slate-800 w-16 text-center">{year}</span>
-          <button onClick={() => setYear(y => y + 1)}
-            className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-            <ChevronRight size={16} className="text-slate-600" />
-          </button>
-        </div>
+        {tab !== 'parcelas' && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setYear(y => y - 1)}
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+              <ChevronLeft size={16} className="text-slate-600" />
+            </button>
+            <span className="text-lg font-bold text-slate-800 w-16 text-center">{year}</span>
+            <button onClick={() => setYear(y => y + 1)}
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+              <ChevronRight size={16} className="text-slate-600" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-        {[{ key: 'geral', label: 'Geral' }, { key: 'cartoes', label: 'Cartões' }].map(t => (
+        {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${tab === t.key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
             {t.label}
@@ -353,7 +437,9 @@ export default function FlowPage() {
         ))}
       </div>
 
-      {tab === 'geral' ? <FlowGeral year={year} /> : <FlowCartoes year={year} />}
+      {tab === 'geral'    && <FlowGeral year={year} />}
+      {tab === 'cartoes'  && <FlowCartoes year={year} />}
+      {tab === 'parcelas' && <FlowParcelas />}
     </div>
   );
 }

@@ -116,4 +116,62 @@ router.get('/cards', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/flow/installments — parcelas agrupadas por cartão
+router.get('/installments', async (req, res, next) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT
+        cc.id          AS card_id,
+        cc.name        AS card_name,
+        cc.color       AS card_color,
+        cc.bank        AS card_bank,
+        t.installment_group_id,
+        t.installment_total,
+        MIN(t.description)                                        AS description,
+        MIN(t.amount)                                             AS amount_per_installment,
+        SUM(t.amount)                                             AS total_amount,
+        SUM(CASE WHEN t.status = 'paid'    THEN 1 ELSE 0 END)    AS paid_count,
+        SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END)    AS pending_count,
+        MIN(t.date)                                               AS first_date,
+        MAX(t.date)                                               AS last_date,
+        COALESCE(c.name, 'Sem categoria')                         AS category_name,
+        COALESCE(c.color, '#64748B')                              AS category_color
+      FROM transactions t
+      INNER JOIN credit_cards cc ON t.credit_card_id = cc.id
+      LEFT  JOIN categories   c  ON t.category_id    = c.id
+      WHERE t.installment_group_id IS NOT NULL AND t.installment_total > 1
+      GROUP BY cc.id, t.installment_group_id
+      ORDER BY cc.name, first_date DESC
+    `);
+
+    const cardMap = {};
+    for (const r of rows) {
+      if (!cardMap[r.card_id]) {
+        cardMap[r.card_id] = {
+          card_id: r.card_id, card_name: r.card_name,
+          card_color: r.card_color, card_bank: r.card_bank,
+          groups: [],
+        };
+      }
+      // strip " (X/N)" suffix added during creation
+      const desc = String(r.description).replace(/ \(\d+\/\d+\)$/, '');
+      cardMap[r.card_id].groups.push({
+        group_id: r.installment_group_id,
+        description: desc,
+        installment_total: r.installment_total,
+        amount_per_installment: parseFloat(r.amount_per_installment),
+        total_amount: parseFloat(r.total_amount),
+        paid_count: r.paid_count,
+        pending_count: r.pending_count,
+        first_date: r.first_date,
+        last_date: r.last_date,
+        category_name: r.category_name,
+        category_color: r.category_color,
+      });
+    }
+
+    res.json({ cards: Object.values(cardMap) });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
