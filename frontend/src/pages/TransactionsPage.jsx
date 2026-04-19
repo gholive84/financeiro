@@ -370,13 +370,23 @@ export default function TransactionsPage() {
             </select>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <button onClick={selectAll} className="text-xs text-blue-200 hover:text-white transition-colors">
-              Todas ({filtered.length})
-            </button>
             <button onClick={clearSelection} className="p-1.5 rounded-lg hover:bg-blue-500 text-blue-200 hover:text-white transition-colors">
               <X size={14} />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Selecionar todas — aparece quando há seleção parcial */}
+      {selectedIds.length > 0 && selectedIds.length < filtered.length && (
+        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl px-4 py-2">
+          <span className="text-xs text-blue-600 dark:text-blue-400">
+            {selectedIds.length} de {filtered.length} selecionada{selectedIds.length > 1 ? 's' : ''}
+          </span>
+          <button onClick={selectAll}
+            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors">
+            Selecionar todas ({filtered.length})
+          </button>
         </div>
       )}
 
