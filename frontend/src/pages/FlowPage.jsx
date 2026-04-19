@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, CreditCard } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, CreditCard, Pencil } from 'lucide-react';
 import api from '../services/api';
+import TransactionForm from '../components/Transactions/TransactionForm';
 
 const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const fmt = (v) => v === 0 ? '—' : `R$\u00a0${v.toFixed(2).replace('.', ',')}`;
@@ -13,6 +14,8 @@ function FlowGeral({ year }) {
   const [selected, setSelected] = useState(null);
   const [detailTxs, setDetailTxs] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [editTx, setEditTx] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -20,7 +23,7 @@ function FlowGeral({ year }) {
       .then(r => setData(r.data))
       .catch(() => setData({ categories: [] }))
       .finally(() => setLoading(false));
-  }, [year]);
+  }, [year, refreshKey]);
 
   const incomes             = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total), [data]);
   const fixedExpenses       = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature === 'fixed' && !c.is_installment).sort((a, b) => b.total - a.total), [data]);
@@ -37,9 +40,7 @@ function FlowGeral({ year }) {
     return { exp, inc };
   }, [expenses, incomes]);
 
-  const handleCellClick = async (category, month) => {
-    if (category.months[month] === 0) return;
-    setSelected({ category, month });
+  const fetchDetail = async (category, month) => {
     setDetailLoading(true);
     setDetailTxs([]);
     try {
@@ -52,6 +53,18 @@ function FlowGeral({ year }) {
       setDetailTxs(filtered);
     } catch { setDetailTxs([]); }
     setDetailLoading(false);
+  };
+
+  const handleCellClick = (category, month) => {
+    if (category.months[month] === 0) return;
+    setSelected({ category, month });
+    fetchDetail(category, month);
+  };
+
+  const handleEditSave = () => {
+    setEditTx(null);
+    setRefreshKey(k => k + 1);
+    if (selected) fetchDetail(selected.category, selected.month);
   };
 
   const cellClass = (type, value) => {
@@ -172,7 +185,7 @@ function FlowGeral({ year }) {
           ) : (
             <div className="space-y-1">
               {detailTxs.map(t => (
-                <div key={t.id} className="flex items-center justify-between gap-2 py-2 border-b border-slate-50 last:border-0">
+                <div key={t.id} className="flex items-center gap-2 py-2 border-b border-slate-50 last:border-0">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-700 truncate font-medium">{t.description}</p>
                     <p className="text-xs text-slate-400">{String(t.date).split('T')[0].split('-').reverse().join('/')}</p>
@@ -180,10 +193,32 @@ function FlowGeral({ year }) {
                   <span className={`text-sm font-semibold flex-shrink-0 ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
                     {t.type === 'income' ? '+' : '-'} {fmtFull(t.amount)}
                   </span>
+                  <button onClick={() => setEditTx(t)}
+                    className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-500 flex-shrink-0 transition-colors">
+                    <Pencil size={13} />
+                  </button>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {editTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-100">Editar transação</h2>
+              <button onClick={() => setEditTx(null)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                <X size={16} className="text-slate-400" />
+              </button>
+            </div>
+            <TransactionForm
+              initial={editTx}
+              onSave={handleEditSave}
+              onCancel={() => setEditTx(null)}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -197,6 +232,8 @@ function FlowCartoes({ year }) {
   const [selected, setSelected] = useState(null);
   const [detailTxs, setDetailTxs] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [editTx, setEditTx] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -204,11 +241,9 @@ function FlowCartoes({ year }) {
       .then(r => setData(r.data))
       .catch(() => setData({ cards: [] }))
       .finally(() => setLoading(false));
-  }, [year]);
+  }, [year, refreshKey]);
 
-  const handleCellClick = async (card, category, month) => {
-    if (category.months[month] === 0) return;
-    setSelected({ card, category, month });
+  const fetchDetail = async (card, category, month) => {
     setDetailLoading(true);
     setDetailTxs([]);
     try {
@@ -218,6 +253,18 @@ function FlowCartoes({ year }) {
       setDetailTxs(txs);
     } catch { setDetailTxs([]); }
     setDetailLoading(false);
+  };
+
+  const handleCellClick = (card, category, month) => {
+    if (category.months[month] === 0) return;
+    setSelected({ card, category, month });
+    fetchDetail(card, category, month);
+  };
+
+  const handleEditSave = () => {
+    setEditTx(null);
+    setRefreshKey(k => k + 1);
+    if (selected) fetchDetail(selected.card, selected.category, selected.month);
   };
 
   if (loading) return <p className="text-slate-400 text-sm text-center py-20">Carregando...</p>;
@@ -308,16 +355,38 @@ function FlowCartoes({ year }) {
           ) : (
             <div className="space-y-1">
               {detailTxs.map(t => (
-                <div key={t.id} className="flex items-center justify-between gap-2 py-2 border-b border-slate-50 last:border-0">
+                <div key={t.id} className="flex items-center gap-2 py-2 border-b border-slate-50 last:border-0">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-700 truncate font-medium">{t.description}</p>
                     <p className="text-xs text-slate-400">{String(t.date).split('T')[0].split('-').reverse().join('/')}</p>
                   </div>
                   <span className="text-sm font-semibold text-red-500 flex-shrink-0">- {fmtFull(t.amount)}</span>
+                  <button onClick={() => setEditTx(t)}
+                    className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-500 flex-shrink-0 transition-colors">
+                    <Pencil size={13} />
+                  </button>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {editTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-100">Editar transação</h2>
+              <button onClick={() => setEditTx(null)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                <X size={16} className="text-slate-400" />
+              </button>
+            </div>
+            <TransactionForm
+              initial={editTx}
+              onSave={handleEditSave}
+              onCancel={() => setEditTx(null)}
+            />
+          </div>
         </div>
       )}
     </div>
