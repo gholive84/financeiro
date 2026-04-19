@@ -47,12 +47,14 @@ function FlowGeral({ year }) {
   const varExpenses         = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature !== 'fixed' && !c.is_installment).sort((a, b) => b.total - a.total), [data]);
   const expenses            = useMemo(() => [...fixedExpenses, ...installmentExpenses, ...varExpenses], [fixedExpenses, installmentExpenses, varExpenses]);
 
-  // total cuts per month across all expense categories (for Saldo row)
+  // net balance impact of cuts per month: expense cuts = +balance, income cuts = -balance
   const cutsPerMonth = useMemo(() => {
     const acc = {};
     for (let i = 1; i <= 12; i++) acc[i] = 0;
-    for (const { tx, month } of cutTxs.values())
+    for (const { tx, month } of cutTxs.values()) {
       if (tx.type === 'expense') acc[month] += tx.amount;
+      else if (tx.type === 'income') acc[month] -= tx.amount;
+    }
     return acc;
   }, [cutTxs]);
 
@@ -239,8 +241,9 @@ function FlowGeral({ year }) {
                 })}
                 <td className="px-3 py-3 text-right text-xs font-bold whitespace-nowrap text-slate-700">
                   {(() => {
-                    const totalCutsAll = Array.from(cutTxs.values()).filter(c => c.tx.type === 'expense').reduce((s, c) => s + c.tx.amount, 0);
-                    const total = incomes.reduce((s,c) => s+c.total,0) - expenses.reduce((s,c) => s+c.total,0) + totalCutsAll;
+                    const expCuts = Array.from(cutTxs.values()).filter(c => c.tx.type === 'expense').reduce((s, c) => s + c.tx.amount, 0);
+                    const incCuts = Array.from(cutTxs.values()).filter(c => c.tx.type === 'income').reduce((s, c) => s + c.tx.amount, 0);
+                    const total = incomes.reduce((s,c) => s+c.total,0) - expenses.reduce((s,c) => s+c.total,0) + expCuts - incCuts;
                     return total === 0 ? '—' : `${total > 0 ? '+' : ''}${fmtFull(total)}`;
                   })()}
                 </td>
