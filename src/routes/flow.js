@@ -173,8 +173,8 @@ router.get('/installments', async (req, res, next) => {
         };
       }
       cardMap[r.card_id].groups[gid].months[r.month] = parseFloat(r.month_amount);
-      cardMap[r.card_id].groups[gid].paid_count    += r.paid_count;
-      cardMap[r.card_id].groups[gid].pending_count += r.pending_count;
+      cardMap[r.card_id].groups[gid].paid_count    += parseInt(r.paid_count)    || 0;
+      cardMap[r.card_id].groups[gid].pending_count += parseInt(r.pending_count) || 0;
     }
 
     const cards = Object.values(cardMap).map(card => ({
