@@ -23,16 +23,16 @@ function BudgetForm({ categories, onSave, onCancel, month, year }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <select required className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <select required className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.category_id} onChange={e => set('category_id', e.target.value)}>
         <option value="">Selecione a categoria</option>
         {expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
       <input required type="number" step="0.01" min="0.01" placeholder="Valor planejado (R$)"
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.amount_planned} onChange={e => set('amount_planned', e.target.value)} />
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
+        <button type="button" onClick={onCancel} className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
         <button type="submit" disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50">
           {loading ? 'Salvando...' : 'Salvar'}
         </button>
@@ -70,13 +70,13 @@ export default function BudgetPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-slate-800">Orçamento</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Orçamento</h1>
         <div className="flex items-center gap-3">
-          <select className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
+          <select className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={month} onChange={e => setMonth(parseInt(e.target.value))}>
             {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
           </select>
-          <select className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
+          <select className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={year} onChange={e => setYear(parseInt(e.target.value))}>
             {[now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1].map(y => (
               <option key={y} value={y}>{y}</option>

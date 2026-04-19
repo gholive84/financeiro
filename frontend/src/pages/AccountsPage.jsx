@@ -27,10 +27,10 @@ function AccountForm({ initial, onSave, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <input required placeholder="Nome da conta" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <input required placeholder="Nome da conta" className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.name} onChange={e => set('name', e.target.value)} />
 
-      <select required className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <select required className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.type} onChange={e => set('type', e.target.value)}>
         <option value="debit">Conta Corrente</option>
         <option value="cash">Dinheiro</option>
@@ -39,13 +39,13 @@ function AccountForm({ initial, onSave, onCancel }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Saldo inicial (R$)</label>
-          <input type="number" step="0.01" placeholder="0,00" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Saldo inicial (R$)</label>
+          <input type="number" step="0.01" placeholder="0,00" className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={form.balance} onChange={e => set('balance', e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Cor</label>
-          <input type="color" className="w-full h-10 border border-slate-200 rounded-xl px-2 cursor-pointer"
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Cor</label>
+          <input type="color" className="w-full h-10 border border-slate-200 dark:border-slate-600 rounded-xl px-2 cursor-pointer"
             value={form.color} onChange={e => set('color', e.target.value)} />
         </div>
       </div>
@@ -56,14 +56,14 @@ function AccountForm({ initial, onSave, onCancel }) {
         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors
           ${form.is_default
             ? 'border-amber-300 bg-amber-50 text-amber-700'
-            : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+            : 'border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
       >
         <Star size={15} className={form.is_default ? 'fill-amber-400 text-amber-400' : 'text-slate-400'} />
         {form.is_default ? 'Conta padrão (pré-selecionada no lançamento com IA)' : 'Definir como conta padrão'}
       </button>
 
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
+        <button type="button" onClick={onCancel} className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
         <button type="submit" disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50">
           {loading ? 'Salvando...' : 'Salvar'}
         </button>
@@ -95,10 +95,10 @@ export default function AccountsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Contas</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Contas</h1>
           {accounts.length > 0 && (
             <p className="text-sm text-slate-400 mt-1">
-              Saldo total: <span className="font-semibold text-slate-700">R$ {totalBalance.toFixed(2).replace('.', ',')}</span>
+              Saldo total: <span className="font-semibold text-slate-700 dark:text-slate-200">R$ {totalBalance.toFixed(2).replace('.', ',')}</span>
             </p>
           )}
         </div>
@@ -116,7 +116,7 @@ export default function AccountsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {accounts.map(a => (
-            <div key={a.id} className={`bg-white rounded-2xl border p-5 ${a.is_default ? 'border-amber-200' : 'border-slate-100'}`}>
+            <div key={a.id} className={`bg-white dark:bg-slate-800 rounded-2xl border p-5 ${a.is_default ? 'border-amber-200' : 'border-slate-100 dark:border-slate-700'}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: a.color + '22' }}>
@@ -124,7 +124,7 @@ export default function AccountsPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <p className="font-semibold text-slate-800">{a.name}</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-100">{a.name}</p>
                       {a.is_default && (
                         <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
                           <Star size={9} className="fill-amber-500 text-amber-500" /> Padrão
@@ -135,7 +135,7 @@ export default function AccountsPage() {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => { setEditing(a); setModal(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors">
+                  <button onClick={() => { setEditing(a); setModal(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-blue-600 transition-colors">
                     <Pencil size={14} />
                   </button>
                   <button onClick={() => handleDelete(a.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
@@ -143,7 +143,7 @@ export default function AccountsPage() {
                   </button>
                 </div>
               </div>
-              <p className={`text-2xl font-bold ${parseFloat(a.balance) < 0 ? 'text-red-500' : 'text-slate-800'}`}>
+              <p className={`text-2xl font-bold ${parseFloat(a.balance) < 0 ? 'text-red-500' : 'text-slate-800 dark:text-slate-100'}`}>
                 R$ {parseFloat(a.balance).toFixed(2).replace('.', ',')}
               </p>
             </div>

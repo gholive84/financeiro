@@ -30,6 +30,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
   } : empty);
   const [loading, setLoading] = useState(false);
   const [allTags, setAllTags] = useState([]);
+  const [updateRemaining, setUpdateRemaining] = useState(false);
 
   useEffect(() => {
     loadCategories(); loadAccounts(); loadCreditCards();
@@ -39,7 +40,8 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
   const set = (k, v) => setForm(f => {
     const updated = { ...f, [k]: v };
     if (k === 'date') updated.status = statusForDate(v);
-    if (k === 'type') updated.expense_nature = null; // reset fixed on type change
+    if (k === 'type') updated.expense_nature = null;
+    if (k === 'installments' && parseInt(v) > 1) updated.expense_nature = null;
     return updated;
   });
 
@@ -50,6 +52,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
 
   const isFixed = form.expense_nature === 'fixed';
   const isNew = !initial?.id;
+  const isGrouped = !isNew && (initial?.fixed_group_id || initial?.installment_group_id);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,6 +67,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         expense_nature: form.expense_nature || null,
         fixed_months: isFixed ? parseInt(form.fixed_months) || 12 : undefined,
         tag_ids: form.tag_ids,
+        update_remaining: updateRemaining,
       };
       if (initial?.id) {
         await api.put(`/transactions/${initial.id}`, payload);
@@ -82,47 +86,65 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
   const parentCategories = filteredCategories.filter(c => !c.parent_id);
   const childCategories = filteredCategories.filter(c => c.parent_id);
 
+  const MonthSelector = ({ color }) => (
+    <div className="space-y-2 pl-6">
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input type="radio" name="fixed_type" checked={form.fixed_months === 0}
+          onChange={() => set('fixed_months', 0)} className={`accent-${color}-600`} />
+        <span className="text-sm text-slate-700 dark:text-slate-200">Todos os meses (12 meses)</span>
+      </label>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input type="radio" name="fixed_type" checked={form.fixed_months > 0}
+          onChange={() => set('fixed_months', form.fixed_months > 0 ? form.fixed_months : 3)}
+          className={`accent-${color}-600`} />
+        <span className="text-sm text-slate-700 dark:text-slate-200">Por</span>
+        <input type="number" min={1} max={60}
+          className="w-16 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
+          value={form.fixed_months > 0 ? form.fixed_months : 3}
+          onChange={e => set('fixed_months', parseInt(e.target.value) || 1)}
+          onClick={() => { if (form.fixed_months === 0) set('fixed_months', 3); }} />
+        <span className="text-sm text-slate-700 dark:text-slate-200">meses</span>
+      </label>
+      <p className={`text-xs text-${color}-600`}>
+        {isNew
+          ? `Serão criadas ${form.fixed_months || 12} transações mensais a partir da data escolhida.`
+          : `Esta transação + mais ${(form.fixed_months || 12) - 1} meses seguintes serão criados.`}
+      </p>
+    </div>
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Tipo */}
       <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600">
         {['expense', 'income'].map(t => (
-          <button
-            type="button" key={t}
+          <button type="button" key={t}
             className={`flex-1 py-2 text-sm font-semibold transition-colors
               ${form.type === t
                 ? t === 'expense' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
                 : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-600'}`}
-            onClick={() => set('type', t)}
-          >
+            onClick={() => set('type', t)}>
             {t === 'expense' ? 'Despesa' : 'Receita'}
           </button>
         ))}
       </div>
 
-      <input
-        required placeholder="Descrição"
+      <input required placeholder="Descrição"
         className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-        value={form.description} onChange={e => set('description', e.target.value)}
-      />
+        value={form.description} onChange={e => set('description', e.target.value)} />
 
       <div className="grid grid-cols-2 gap-3">
-        <input
-          required type="number" step="0.01" min="0.01" placeholder="Valor (R$)"
+        <input required type="number" step="0.01" min="0.01" placeholder="Valor (R$)"
           className="border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-          value={form.amount} onChange={e => set('amount', e.target.value)}
-        />
-        <input
-          required type="date"
+          value={form.amount} onChange={e => set('amount', e.target.value)} />
+        <input required type="date"
           className="border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-          value={form.date} onChange={e => set('date', e.target.value)}
-        />
+          value={form.date} onChange={e => set('date', e.target.value)} />
       </div>
 
       <select
         className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-        value={form.category_id} onChange={e => set('category_id', e.target.value)}
-      >
+        value={form.category_id} onChange={e => set('category_id', e.target.value)}>
         <option value="">Categoria (opcional)</option>
         {parentCategories.map(parent => {
           const subs = childCategories.filter(c => String(c.parent_id) === String(parent.id));
@@ -145,25 +167,23 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         <select
           className="border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
           value={form.account_id}
-          onChange={e => { set('account_id', e.target.value); if (e.target.value) { set('credit_card_id', ''); set('installments', 1); } }}
-          disabled={!!form.credit_card_id}
-        >
+          onChange={e => { set('account_id', e.target.value); if (e.target.value) set('credit_card_id', ''); }}
+          disabled={!!form.credit_card_id}>
           <option value="">Conta</option>
           {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
         <select
           className="border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
           value={form.credit_card_id}
-          onChange={e => { set('credit_card_id', e.target.value); if (e.target.value) { set('account_id', ''); set('expense_nature', null); } }}
-          disabled={!!form.account_id}
-        >
+          onChange={e => { set('credit_card_id', e.target.value); if (e.target.value) set('account_id', ''); }}
+          disabled={!!form.account_id}>
           <option value="">Cartão de crédito</option>
           {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
 
-      {/* Parcelas — só com cartão, só ao criar */}
-      {form.credit_card_id && isNew && (
+      {/* Parcelas — cartão, despesa, sem recorrente */}
+      {form.credit_card_id && form.type === 'expense' && isNew && !isFixed && (
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Parcelas</label>
           <select
@@ -175,64 +195,62 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
             ))}
           </select>
           {form.installments > 1 && (
-            <p className="text-xs text-blue-500 mt-1">
-              Serão criadas {form.installments} transações mensais automaticamente.
-            </p>
+            <p className="text-xs text-blue-500 mt-1">Serão criadas {form.installments} transações mensais automaticamente.</p>
           )}
         </div>
       )}
 
-      {/* Despesa fixa — só em despesas sem cartão */}
+      {/* Compra recorrente no cartão */}
+      {form.credit_card_id && form.type === 'expense' && form.installments <= 1 && (
+        <div className={`rounded-xl border p-3 space-y-3 transition-colors ${isFixed ? 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-700' : 'border-slate-200 dark:border-slate-600'}`}>
+          <button type="button" onClick={() => set('expense_nature', isFixed ? null : 'fixed')}
+            className="flex items-center gap-2 w-full text-left">
+            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isFixed ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'}`}>
+              {isFixed && <span className="w-2 h-2 bg-white rounded-sm block" />}
+            </div>
+            <RepeatIcon size={14} className={isFixed ? 'text-indigo-600' : 'text-slate-400'} />
+            <span className={`text-sm font-medium ${isFixed ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300'}`}>
+              Compra recorrente (mesmo valor todo mês)
+            </span>
+          </button>
+          {isFixed && <MonthSelector color="indigo" />}
+        </div>
+      )}
+
+      {/* Despesa fixa — conta, despesa */}
       {form.type === 'expense' && !form.credit_card_id && (
-        <div className={`rounded-xl border p-3 space-y-3 transition-colors ${isFixed ? 'border-violet-200 bg-violet-50' : 'border-slate-200 dark:border-slate-600'}`}>
+        <div className={`rounded-xl border p-3 space-y-3 transition-colors ${isFixed ? 'border-violet-200 bg-violet-50 dark:bg-violet-900/20 dark:border-violet-700' : 'border-slate-200 dark:border-slate-600'}`}>
           <button type="button" onClick={() => set('expense_nature', isFixed ? null : 'fixed')}
             className="flex items-center gap-2 w-full text-left">
             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isFixed ? 'bg-violet-600 border-violet-600' : 'border-slate-300'}`}>
               {isFixed && <span className="w-2 h-2 bg-white rounded-sm block" />}
             </div>
             <RepeatIcon size={14} className={isFixed ? 'text-violet-600' : 'text-slate-400'} />
-            <span className={`text-sm font-medium ${isFixed ? 'text-violet-700' : 'text-slate-600 dark:text-slate-300'}`}>
+            <span className={`text-sm font-medium ${isFixed ? 'text-violet-700 dark:text-violet-300' : 'text-slate-600 dark:text-slate-300'}`}>
               Despesa fixa (recorrente)
             </span>
           </button>
-
-          {isFixed && (
-            <div className="space-y-2 pl-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="fixed_type" checked={form.fixed_months === 0}
-                  onChange={() => set('fixed_months', 0)}
-                  className="accent-violet-600" />
-                <span className="text-sm text-slate-700 dark:text-slate-200">Todos os meses (12 meses)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="fixed_type" checked={form.fixed_months > 0}
-                  onChange={() => set('fixed_months', form.fixed_months > 0 ? form.fixed_months : 3)}
-                  className="accent-violet-600" />
-                <span className="text-sm text-slate-700 dark:text-slate-200">Por</span>
-                <input type="number" min={1} max={60}
-                  className="w-16 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-                  value={form.fixed_months > 0 ? form.fixed_months : 3}
-                  onChange={e => set('fixed_months', parseInt(e.target.value) || 1)}
-                  onClick={() => { if (form.fixed_months === 0) set('fixed_months', 3); }} />
-                <span className="text-sm text-slate-700 dark:text-slate-200">meses</span>
-              </label>
-              <p className="text-xs text-violet-600">
-                {isNew
-                  ? `Serão criadas ${form.fixed_months || 12} transações mensais a partir da data escolhida.`
-                  : `Esta transação + mais ${(form.fixed_months || 12) - 1} meses seguintes serão criados.`}
-              </p>
-            </div>
-          )}
+          {isFixed && <MonthSelector color="violet" />}
         </div>
       )}
 
       <select
         className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-        value={form.status} onChange={e => set('status', e.target.value)}
-      >
+        value={form.status} onChange={e => set('status', e.target.value)}>
         <option value="paid">Pago</option>
         <option value="pending">Pendente</option>
       </select>
+
+      {/* Aplicar às próximas ocorrências */}
+      {isGrouped && (
+        <label className="flex items-center gap-3 p-3 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700 cursor-pointer">
+          <input type="checkbox" checked={updateRemaining} onChange={e => setUpdateRemaining(e.target.checked)}
+            className="w-4 h-4 accent-blue-600 flex-shrink-0" />
+          <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+            Aplicar alterações às próximas ocorrências
+          </span>
+        </label>
+      )}
 
       {/* Tags */}
       {allTags.length > 0 && (
@@ -245,7 +263,7 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
               const active = form.tag_ids.includes(tag.id);
               return (
                 <button type="button" key={tag.id} onClick={() => toggleTag(tag.id)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${active ? 'border-transparent' : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-500'}`}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${active ? 'border-transparent' : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}
                   style={active ? { backgroundColor: tag.color + '22', color: tag.color, borderColor: tag.color + '44' } : {}}>
                   {active && '✓ '}{tag.name}
                 </button>
@@ -255,23 +273,17 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         </div>
       )}
 
-      <textarea
-        placeholder="Observações (opcional)" rows={2}
+      <textarea placeholder="Observações (opcional)" rows={2}
         className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-        value={form.notes} onChange={e => set('notes', e.target.value)}
-      />
+        value={form.notes} onChange={e => set('notes', e.target.value)} />
 
       <div className="flex gap-3 pt-2">
-        <button
-          type="button" onClick={onCancel}
-          className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-        >
+        <button type="button" onClick={onCancel}
+          className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
           Cancelar
         </button>
-        <button
-          type="submit" disabled={loading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50">
           {loading ? 'Salvando...' : 'Salvar'}
         </button>
       </div>

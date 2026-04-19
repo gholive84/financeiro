@@ -25,11 +25,11 @@ function TagForm({ initial, onSave, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <input required placeholder="Nome da tag" maxLength={50}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.name} onChange={e => set('name', e.target.value)} />
 
       <div>
-        <label className="text-xs text-slate-500 mb-2 block">Cor</label>
+        <label className="text-xs text-slate-500 dark:text-slate-400 mb-2 block">Cor</label>
         <div className="flex flex-wrap gap-2">
           {COLORS.map(c => (
             <button key={c} type="button" onClick={() => set('color', c)}
@@ -42,7 +42,7 @@ function TagForm({ initial, onSave, onCancel }) {
       </div>
 
       <div className="pt-1">
-        <p className="text-xs text-slate-400 mb-2">Pré-visualização</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">Pré-visualização</p>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
           style={{ backgroundColor: form.color + '22', color: form.color }}>
           <Tag size={10} /> {form.name || 'Nome da tag'}
@@ -51,7 +51,7 @@ function TagForm({ initial, onSave, onCancel }) {
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel}
-          className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+          className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
           Cancelar
         </button>
         <button type="submit" disabled={loading}
@@ -86,7 +86,7 @@ export default function TagsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Tags</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Tags</h1>
           <p className="text-sm text-slate-400 mt-1">Marque transações com tags para organizar e filtrar.</p>
         </div>
         <button onClick={() => { setEditing(null); setModal(true); }}
@@ -105,10 +105,10 @@ export default function TagsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tags.map(tag => (
             <div key={tag.id}
-              className="bg-white rounded-2xl border border-slate-100 px-5 py-4 flex items-center justify-between gap-3">
+              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-5 py-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
-                <span className="font-medium text-slate-800 truncate">{tag.name}</span>
+                <span className="font-medium text-slate-800 dark:text-slate-100 truncate">{tag.name}</span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0"
                   style={{ backgroundColor: tag.color + '22', color: tag.color }}>
                   <Tag size={9} /> {tag.name}
@@ -116,7 +116,7 @@ export default function TagsPage() {
               </div>
               <div className="flex gap-1 flex-shrink-0">
                 <button onClick={() => { setEditing(tag); setModal(true); }}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors">
+                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-blue-600 transition-colors">
                   <Pencil size={14} />
                 </button>
                 <button onClick={() => handleDelete(tag.id)}

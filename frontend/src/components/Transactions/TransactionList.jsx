@@ -66,8 +66,8 @@ export default function TransactionList({ transactions, onEdit, onDelete, onDeta
                     </Badge>
                   )}
                   {isFixed && (
-                    <Badge className="bg-violet-50 text-violet-600">
-                      <span className="flex items-center gap-0.5"><Repeat size={9} /> Fixa</span>
+                    <Badge className={t.credit_card ? 'bg-indigo-50 text-indigo-600' : 'bg-violet-50 text-violet-600'}>
+                      <span className="flex items-center gap-0.5"><Repeat size={9} /> {t.credit_card ? 'Recorrente' : 'Fixa'}</span>
                     </Badge>
                   )}
                   {t.installment_total > 1 && (

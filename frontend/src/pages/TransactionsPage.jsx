@@ -155,22 +155,25 @@ export default function TransactionsPage() {
   };
 
   const handleDelete = async (id) => {
-    const t = transactions.find(t => t.id === id);
+    const t = transactions.find(tx => tx.id === id);
     const isInstallment = t?.installment_total > 1 && t?.installment_group_id;
     const isFixed = t?.expense_nature === 'fixed' && t?.fixed_group_id;
 
-    if (isInstallment) {
-      const deleteAll = window.confirm(
-        `Parcela ${t.installment_current}/${t.installment_total} — "${t.description}"\n\nOK = Excluir TODAS as ${t.installment_total} parcelas\nCancelar = Excluir só esta parcela`
+    if (isInstallment || isFixed) {
+      const label = isInstallment
+        ? `Parcela ${t.installment_current}/${t.installment_total}`
+        : (t.credit_card ? 'Compra recorrente' : 'Despesa fixa');
+      const choice = window.prompt(
+        `${label} — "${t.description}"\n\nDigite:\n  1 = Excluir só esta\n  2 = Excluir esta e as próximas\n  3 = Excluir todas`,
+        '1'
       );
-      await api.delete(`/transactions/${id}${deleteAll ? '?all=true' : ''}`);
-    } else if (isFixed) {
-      const deleteAll = window.confirm(
-        `Despesa fixa — "${t.description}"\n\nOK = Excluir TODAS as ocorrências desta despesa fixa\nCancelar = Excluir só este mês`
-      );
-      await api.delete(`/transactions/${id}${deleteAll ? '?all=true' : ''}`);
+      if (!choice) return;
+      if (choice === '1') await api.delete(`/transactions/${id}`);
+      else if (choice === '2') await api.delete(`/transactions/${id}?remaining=true`);
+      else if (choice === '3') await api.delete(`/transactions/${id}?all=true`);
+      else return;
     } else {
-      if (!confirm('Deletar esta transação?')) return;
+      if (!window.confirm('Deletar esta transação?')) return;
       await api.delete(`/transactions/${id}`);
     }
     load();
@@ -233,12 +236,12 @@ export default function TransactionsPage() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               placeholder="Buscar..."
-              className="pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
+              className="pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
               value={search} onChange={e => setSearch(e.target.value)}
             />
           </div>
           <select
-            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}
           >
             <option value="">Todos os tipos</option>
@@ -246,7 +249,7 @@ export default function TransactionsPage() {
             <option value="expense">Despesas</option>
           </select>
           <select
-            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
           >
             <option value="">Todos os status</option>
@@ -254,7 +257,7 @@ export default function TransactionsPage() {
             <option value="pending">Pendentes</option>
           </select>
           <select
-            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={filters.category_id} onChange={e => setFilters(f => ({ ...f, category_id: e.target.value }))}
           >
             <option value="">Todas as categorias</option>
@@ -271,14 +274,14 @@ export default function TransactionsPage() {
             })}
           </select>
           <select
-            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={filters.account_id} onChange={e => setFilters(f => ({ ...f, account_id: e.target.value, credit_card_id: '' }))}
           >
             <option value="">Todas as contas</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           <select
-            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={filters.credit_card_id} onChange={e => setFilters(f => ({ ...f, credit_card_id: e.target.value, account_id: '' }))}
           >
             <option value="">Todos os cartões</option>
@@ -295,7 +298,7 @@ export default function TransactionsPage() {
               return (
                 <button key={tag.id} type="button"
                   onClick={() => setFilters(f => ({ ...f, tag_id: active ? '' : String(tag.id) }))}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${active ? 'border-transparent' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${active ? 'border-transparent' : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-500'}`}
                   style={active ? { backgroundColor: tag.color + '22', color: tag.color, borderColor: tag.color + '55' } : {}}>
                   {tag.name}
                   {active && <X size={10} />}
@@ -314,9 +317,9 @@ export default function TransactionsPage() {
             { label: 'Despesas', value: filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0), color: 'text-red-500' },
             { label: 'Saldo', value: filtered.reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), color: 'text-slate-800' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white rounded-2xl border border-slate-100 px-4 py-3 text-center">
+            <div key={label} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-4 py-3 text-center">
               <p className="text-xs text-slate-400 mb-1">{label}</p>
-              <p className={`text-lg font-bold ${color}`}>R$ {Math.abs(value).toFixed(2).replace('.', ',')}</p>
+              <p className={`text-lg font-bold ${color === 'text-slate-800' ? 'text-slate-800 dark:text-slate-100' : color}`}>R$ {Math.abs(value).toFixed(2).replace('.', ',')}</p>
             </div>
           ))}
         </div>

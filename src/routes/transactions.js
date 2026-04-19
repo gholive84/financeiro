@@ -78,7 +78,7 @@ async function attachTags(transactions) {
     }
     return transactions.map(t => ({ ...t, tags: map[t.id] || [] }));
   } catch {
-    return transactions; // tags table may not exist yet
+    return transactions;
   }
 }
 
@@ -159,8 +159,8 @@ router.post('/', async (req, res, next) => {
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // --- DESPESA FIXA ---
-    if (expense_nature === 'fixed' && !credit_card_id) {
+    // --- FIXA (conta) ou RECORRENTE (cartão) ---
+    if (expense_nature === 'fixed') {
       const numMonths = parseInt(fixed_months) || 12;
       const groupId = uuidv4();
       const [baseDate] = (date || todayStr).split('T');
@@ -170,12 +170,16 @@ router.post('/', async (req, res, next) => {
       for (let i = 0; i < numMonths; i++) {
         const fixedDate = new Date(y, m - 1 + i, d);
         const fixedDateStr = fixedDate.toISOString().split('T')[0];
-        const fixedStatus = fixedDateStr <= todayStr ? 'paid' : 'pending';
+        // CC purchases are always pending; account-based use date comparison
+        const fixedStatus = credit_card_id ? 'pending' : (fixedDateStr <= todayStr ? 'paid' : 'pending');
         const [result] = await db.query(
           `INSERT INTO transactions
             (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, expense_nature, fixed_group_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fixed', ?)`,
-          [description, amount, fixedDateStr, type, account_id || null, null, category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId]
+          [description, amount, fixedDateStr, type,
+           credit_card_id ? null : (account_id || null),
+           credit_card_id || null,
+           category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId]
         );
         if (fixedStatus === 'paid' && account_id) {
           const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
@@ -234,7 +238,9 @@ router.post('/', async (req, res, next) => {
 // PUT /api/transactions/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const { description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, status, notes, expense_nature, fixed_months, tag_ids } = req.body;
+    const { description, amount, date, type, account_id, credit_card_id, category_id,
+            is_recurring, status, notes, expense_nature, fixed_months, tag_ids,
+            update_remaining } = req.body;
 
     const [old] = await db.query('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
     if (!old.length) return res.status(404).json({ error: 'Transação não encontrada' });
@@ -245,18 +251,20 @@ router.put('/:id', async (req, res, next) => {
       await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, prev.account_id]);
     }
 
-    // Convertendo para fixa: cria meses adicionais
-    const becomingFixed = expense_nature === 'fixed' && !prev.fixed_group_id && !credit_card_id;
+    // Convertendo para fixa/recorrente (sem grupo existente)
+    const becomingFixed = expense_nature === 'fixed' && !prev.fixed_group_id;
     if (becomingFixed) {
       const numMonths = parseInt(fixed_months) || 12;
       const groupId = uuidv4();
       const [baseDate] = (date || String(prev.date)).split('T');
       const [y, m, d] = baseDate.split('-').map(Number);
       const todayStr = new Date().toISOString().split('T')[0];
+      const effectiveAccountId = credit_card_id ? null : (account_id || null);
+      const effectiveCCId = credit_card_id || null;
 
       await db.query(
         `UPDATE transactions SET description=?, amount=?, date=?, type=?, account_id=?, credit_card_id=?, category_id=?, is_recurring=?, status=?, notes=?, expense_nature='fixed', fixed_group_id=? WHERE id=?`,
-        [description, amount, date, type, account_id || null, null, category_id || null, is_recurring || false, status || 'paid', notes || null, groupId, req.params.id]
+        [description, amount, date, type, effectiveAccountId, effectiveCCId, category_id || null, is_recurring || false, status || 'paid', notes || null, groupId, req.params.id]
       );
       if ((status === 'paid' || !status) && account_id) {
         const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
@@ -266,11 +274,11 @@ router.put('/:id', async (req, res, next) => {
       for (let i = 1; i < numMonths; i++) {
         const fixedDate = new Date(y, m - 1 + i, d);
         const fixedDateStr = fixedDate.toISOString().split('T')[0];
-        const fixedStatus = fixedDateStr <= todayStr ? 'paid' : 'pending';
+        const fixedStatus = effectiveCCId ? 'pending' : (fixedDateStr <= todayStr ? 'paid' : 'pending');
         await db.query(
           `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, expense_nature, fixed_group_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fixed', ?)`,
-          [description, amount, fixedDateStr, type, account_id || null, null, category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId]
+          [description, amount, fixedDateStr, type, effectiveAccountId, effectiveCCId, category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId]
         );
         if (fixedStatus === 'paid' && account_id) {
           const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
@@ -291,6 +299,24 @@ router.put('/:id', async (req, res, next) => {
     if ((status === 'paid' || !status) && account_id) {
       const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
       await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [delta, account_id]);
+    }
+
+    // Aplicar alterações às próximas ocorrências do grupo
+    if (update_remaining) {
+      if (prev.fixed_group_id) {
+        const prevDateStr = String(prev.date).split('T')[0];
+        await db.query(
+          `UPDATE transactions SET description=?, amount=?, category_id=?, notes=?
+           WHERE fixed_group_id = ? AND date > ? AND id != ?`,
+          [description, amount, category_id || null, notes || null, prev.fixed_group_id, prevDateStr, req.params.id]
+        );
+      } else if (prev.installment_group_id) {
+        await db.query(
+          `UPDATE transactions SET description=?, category_id=?, notes=?
+           WHERE installment_group_id = ? AND installment_current > ?`,
+          [description, category_id || null, notes || null, prev.installment_group_id, prev.installment_current]
+        );
+      }
     }
 
     await setTags(req.params.id, tag_ids);
@@ -321,17 +347,18 @@ router.patch('/bulk', async (req, res, next) => {
 });
 
 // DELETE /api/transactions/:id
-// ?all=true → deleta grupo (parcelas ou despesas fixas)
+// ?all=true      → deleta todo o grupo
+// ?remaining=true → deleta esta e as próximas (por data / número de parcela)
 router.delete('/:id', async (req, res, next) => {
   try {
     const [old] = await db.query('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
     if (!old.length) return res.status(404).json({ error: 'Transação não encontrada' });
     const prev = old[0];
 
+    // Deletar todas do grupo
     if (req.query.all === 'true') {
       const groupId = prev.installment_group_id || prev.fixed_group_id;
       const groupCol = prev.installment_group_id ? 'installment_group_id' : 'fixed_group_id';
-
       if (groupId) {
         const [group] = await db.query(`SELECT * FROM transactions WHERE ${groupCol} = ?`, [groupId]);
         for (const t of group) {
@@ -342,6 +369,38 @@ router.delete('/:id', async (req, res, next) => {
         }
         await db.query(`DELETE FROM transactions WHERE ${groupCol} = ?`, [groupId]);
         return res.json({ message: 'Grupo deletado', deleted: group.length });
+      }
+    }
+
+    // Deletar esta e as próximas
+    if (req.query.remaining === 'true') {
+      const groupId = prev.installment_group_id || prev.fixed_group_id;
+      if (groupId) {
+        let group, deleteSql, deleteParams;
+        if (prev.installment_group_id) {
+          [group] = await db.query(
+            `SELECT * FROM transactions WHERE installment_group_id = ? AND installment_current >= ?`,
+            [groupId, prev.installment_current]
+          );
+          deleteSql = `DELETE FROM transactions WHERE installment_group_id = ? AND installment_current >= ?`;
+          deleteParams = [groupId, prev.installment_current];
+        } else {
+          const prevDateStr = String(prev.date).split('T')[0];
+          [group] = await db.query(
+            `SELECT * FROM transactions WHERE fixed_group_id = ? AND date >= ?`,
+            [groupId, prevDateStr]
+          );
+          deleteSql = `DELETE FROM transactions WHERE fixed_group_id = ? AND date >= ?`;
+          deleteParams = [groupId, prevDateStr];
+        }
+        for (const t of group) {
+          if (t.status === 'paid' && t.account_id) {
+            const revert = t.type === 'income' ? -parseFloat(t.amount) : parseFloat(t.amount);
+            await db.query('UPDATE accounts SET balance = balance + ? WHERE id = ?', [revert, t.account_id]);
+          }
+        }
+        await db.query(deleteSql, deleteParams);
+        return res.json({ message: 'Próximas deletadas', deleted: group.length });
       }
     }
 

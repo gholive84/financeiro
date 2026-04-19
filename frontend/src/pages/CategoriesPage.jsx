@@ -30,7 +30,7 @@ function IconPicker({ value, color, onChange }) {
 
   return (
     <div>
-      <input placeholder="Buscar ícone..." className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2"
+      <input placeholder="Buscar ícone..." className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={search} onChange={e => setSearch(e.target.value)} />
       <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
         {filtered.map(ic => {
@@ -38,7 +38,7 @@ function IconPicker({ value, color, onChange }) {
           const active = value === ic;
           return (
             <button key={ic} type="button" title={ic} onClick={() => onChange(ic)}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${active ? 'ring-2' : 'hover:bg-slate-100'}`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${active ? 'ring-2' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}
               style={active ? { backgroundColor: color + '22', outlineColor: color, ringColor: color } : {}}>
               <Icon size={15} style={{ color: active ? color : '#94a3b8' }} />
             </button>
@@ -81,13 +81,13 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className={`flex rounded-xl overflow-hidden border border-slate-200 ${isSubcategory ? 'opacity-60 pointer-events-none' : ''}`}>
+      <div className={`flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600 ${isSubcategory ? 'opacity-60 pointer-events-none' : ''}`}>
         {['expense', 'income'].map(t => (
           <button type="button" key={t}
             className={`flex-1 py-2 text-sm font-semibold transition-colors
               ${form.type === t
                 ? t === 'expense' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-                : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-600'}`}
             onClick={() => set('type', t)}>
             {t === 'expense' ? 'Despesa' : 'Receita'}
           </button>
@@ -95,13 +95,13 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
       </div>
       {isSubcategory && <p className="text-xs text-slate-400 -mt-2">Tipo herdado da categoria pai</p>}
 
-      <input required placeholder="Nome da categoria" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <input required placeholder="Nome da categoria" className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.name} onChange={e => set('name', e.target.value)} />
 
       {parents.length > 0 && (
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Subcategoria de (opcional)</label>
-          <select className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Subcategoria de (opcional)</label>
+          <select className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
             value={form.parent_id} onChange={e => set('parent_id', e.target.value)}>
             <option value="">— Categoria principal —</option>
             {parents.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -111,21 +111,21 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
 
       <div className="flex items-start gap-3">
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Cor{isSubcategory && ' (do pai)'}</label>
-          <input type="color" className={`w-14 h-10 border border-slate-200 rounded-xl px-1 ${isSubcategory ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Cor{isSubcategory && ' (do pai)'}</label>
+          <input type="color" className={`w-14 h-10 border border-slate-200 dark:border-slate-600 rounded-xl px-1 ${isSubcategory ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
             value={form.color} onChange={e => !isSubcategory && set('color', e.target.value)}
             disabled={isSubcategory} />
         </div>
         <div className="flex-1 min-w-0">
-          <label className="text-xs text-slate-500 mb-1 block">Ícone: <span className="font-semibold text-slate-700">{form.icon}</span></label>
-          <div className="border border-slate-200 rounded-xl p-2">
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Ícone: <span className="font-semibold text-slate-700 dark:text-slate-200">{form.icon}</span></label>
+          <div className="border border-slate-200 dark:border-slate-600 rounded-xl p-2">
             <IconPicker value={form.icon} color={form.color} onChange={v => set('icon', v)} />
           </div>
         </div>
       </div>
 
       {/* Preview */}
-      <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-100">
+      <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
         <span className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: form.color + '22' }}>
           <CatIcon icon={form.icon} color={form.color} />
         </span>
@@ -133,7 +133,7 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
           {form.parent_id && (
             <p className="text-xs text-slate-400">{parents.find(p => String(p.id) === String(form.parent_id))?.name}</p>
           )}
-          <p className="text-sm font-medium text-slate-700">{form.name || 'Preview'}</p>
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{form.name || 'Preview'}</p>
         </div>
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${form.type === 'expense' ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
           {form.type === 'expense' ? 'Despesa' : 'Receita'}
@@ -141,7 +141,7 @@ function CategoryForm({ initial, categories, onSave, onCancel }) {
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
+        <button type="button" onClick={onCancel} className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
         <button type="submit" disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50">
           {loading ? 'Salvando...' : 'Salvar'}
         </button>
@@ -192,7 +192,7 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Categorias</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Categorias</h1>
         <button onClick={() => openNew()}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
           <Plus size={16} /> Nova Categoria
@@ -203,7 +203,7 @@ export default function CategoriesPage() {
         {[['all', 'Todas'], ['expense', 'Despesas'], ['income', 'Receitas']].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors
-              ${filter === val ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+              ${filter === val ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
             {label}
           </button>
         ))}
@@ -217,14 +217,14 @@ export default function CategoriesPage() {
       ) : (
         <div className="space-y-3">
           {parents.map(c => (
-            <div key={c.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+            <div key={c.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
               {/* Categoria pai */}
               <div className="flex items-center gap-3 px-4 py-3">
                 <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: c.color + '22' }}>
                   <CatIcon icon={c.icon} color={c.color} />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">{c.name}</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{c.name}</p>
                   <span className={`text-xs ${c.type === 'expense' ? 'text-red-400' : 'text-green-500'}`}>
                     {c.type === 'expense' ? 'Despesa' : 'Receita'}
                     {childrenByParent[c.id]?.length > 0 && ` · ${childrenByParent[c.id].length} subcategoria(s)`}
@@ -232,10 +232,10 @@ export default function CategoriesPage() {
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
                   <button onClick={() => openNew(c.id)} title="Nova subcategoria"
-                    className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors">
+                    className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-400 hover:text-blue-600 transition-colors">
                     <Plus size={13} />
                   </button>
-                  <button onClick={() => { setEditing(c); setModal(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors">
+                  <button onClick={() => { setEditing(c); setModal(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-blue-600 transition-colors">
                     <Pencil size={13} />
                   </button>
                   <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
@@ -246,14 +246,14 @@ export default function CategoriesPage() {
 
               {/* Subcategorias */}
               {childrenByParent[c.id]?.map(sub => (
-                <div key={sub.id} className="flex items-center gap-3 px-4 py-2.5 border-t border-slate-50 bg-slate-50/50">
-                  <ChevronRight size={12} className="text-slate-300 flex-shrink-0 ml-3" />
+                <div key={sub.id} className="flex items-center gap-3 px-4 py-2.5 border-t border-slate-50 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/30">
+                  <ChevronRight size={12} className="text-slate-300 dark:text-slate-600 flex-shrink-0 ml-3" />
                   <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: sub.color + '22' }}>
                     <CatIcon icon={sub.icon} color={sub.color} size={13} />
                   </span>
-                  <p className="flex-1 text-sm text-slate-700 min-w-0 truncate">{sub.name}</p>
+                  <p className="flex-1 text-sm text-slate-700 dark:text-slate-200 min-w-0 truncate">{sub.name}</p>
                   <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => { setEditing(sub); setModal(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors">
+                    <button onClick={() => { setEditing(sub); setModal(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-blue-600 transition-colors">
                       <Pencil size={12} />
                     </button>
                     <button onClick={() => handleDelete(sub.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
