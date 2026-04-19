@@ -2,29 +2,60 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// GET /api/flow/monthly?year=2024
+// GET /api/flow/monthly?year=2024&mode=cash
 router.get('/monthly', async (req, res, next) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
+    const cash = req.query.mode === 'cash';
 
-    const [rows] = await db.query(`
-      SELECT
-        t.type as tx_type,
-        COALESCE(t.expense_nature, 'variable') as expense_nature,
-        CASE WHEN t.installment_group_id IS NOT NULL THEN 1 ELSE 0 END as is_installment,
-        COALESCE(c.id, 0) as category_id,
-        COALESCE(pc.name, c.name, 'Sem categoria') as category_name,
-        CASE WHEN pc.id IS NOT NULL THEN c.name ELSE NULL END as sub_name,
-        COALESCE(c.color, '#64748B') as category_color,
-        MONTH(t.date) as month,
-        SUM(t.amount) as total
-      FROM transactions t
-      LEFT JOIN categories c ON t.category_id = c.id
-      LEFT JOIN categories pc ON c.parent_id = pc.id
-      WHERE YEAR(t.date) = ?
-      GROUP BY t.type, t.expense_nature, is_installment, c.id, MONTH(t.date)
-      ORDER BY t.type DESC, COALESCE(pc.name, c.name, 'Sem categoria'), c.name, month
-    `, [year]);
+    // cash mode: CC transactions shift +1 month (Dec of prev year → Jan; Jan-Nov → +1 month)
+    const [rows] = cash
+      ? await db.query(`
+          SELECT
+            t.type as tx_type,
+            COALESCE(t.expense_nature, 'variable') as expense_nature,
+            CASE WHEN t.installment_group_id IS NOT NULL THEN 1 ELSE 0 END as is_installment,
+            COALESCE(c.id, 0) as category_id,
+            COALESCE(pc.name, c.name, 'Sem categoria') as category_name,
+            CASE WHEN pc.id IS NOT NULL THEN c.name ELSE NULL END as sub_name,
+            COALESCE(c.color, '#64748B') as category_color,
+            CASE
+              WHEN t.credit_card_id IS NOT NULL AND MONTH(t.date) < 12 THEN MONTH(t.date) + 1
+              WHEN t.credit_card_id IS NOT NULL AND MONTH(t.date) = 12  THEN 1
+              ELSE MONTH(t.date)
+            END as month,
+            SUM(t.amount) as total
+          FROM transactions t
+          LEFT JOIN categories c ON t.category_id = c.id
+          LEFT JOIN categories pc ON c.parent_id = pc.id
+          WHERE (
+            (t.credit_card_id IS NULL AND YEAR(t.date) = ?)
+            OR (t.credit_card_id IS NOT NULL AND (
+              (YEAR(t.date) = ? AND MONTH(t.date) < 12)
+              OR (YEAR(t.date) = ? - 1 AND MONTH(t.date) = 12)
+            ))
+          )
+          GROUP BY t.type, t.expense_nature, is_installment, c.id, month
+          ORDER BY t.type DESC, COALESCE(pc.name, c.name, 'Sem categoria'), c.name, month
+        `, [year, year, year])
+      : await db.query(`
+          SELECT
+            t.type as tx_type,
+            COALESCE(t.expense_nature, 'variable') as expense_nature,
+            CASE WHEN t.installment_group_id IS NOT NULL THEN 1 ELSE 0 END as is_installment,
+            COALESCE(c.id, 0) as category_id,
+            COALESCE(pc.name, c.name, 'Sem categoria') as category_name,
+            CASE WHEN pc.id IS NOT NULL THEN c.name ELSE NULL END as sub_name,
+            COALESCE(c.color, '#64748B') as category_color,
+            MONTH(t.date) as month,
+            SUM(t.amount) as total
+          FROM transactions t
+          LEFT JOIN categories c ON t.category_id = c.id
+          LEFT JOIN categories pc ON c.parent_id = pc.id
+          WHERE YEAR(t.date) = ?
+          GROUP BY t.type, t.expense_nature, is_installment, c.id, MONTH(t.date)
+          ORDER BY t.type DESC, COALESCE(pc.name, c.name, 'Sem categoria'), c.name, month
+        `, [year]);
 
     // Build map: key = "type_nature_isInstallment_categoryId"
     const catMap = {};
@@ -52,7 +83,7 @@ router.get('/monthly', async (req, res, next) => {
       total: Object.values(cat.months).reduce((s, v) => s + v, 0),
     }));
 
-    res.json({ year, categories: result });
+    res.json({ year, mode: cash ? 'cash' : 'accrual', categories: result });
   } catch (err) { next(err); }
 });
 

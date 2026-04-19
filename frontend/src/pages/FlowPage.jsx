@@ -16,6 +16,7 @@ function FlowGeral({ year }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [editTx, setEditTx] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [mode, setMode] = useState('accrual'); // 'accrual' | 'cash'
   // cutTxs: Map<id, { tx, catKey, month }>
   const [cutTxs, setCutTxs] = useState(new Map());
 
@@ -33,11 +34,12 @@ function FlowGeral({ year }) {
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/flow/monthly?year=${year}`)
+    setCutTxs(new Map());
+    api.get(`/flow/monthly?year=${year}&mode=${mode}`)
       .then(r => setData(r.data))
       .catch(() => setData({ categories: [] }))
       .finally(() => setLoading(false));
-  }, [year, refreshKey]);
+  }, [year, mode, refreshKey]);
 
   const incomes             = useMemo(() => data.categories.filter(c => c.category_type === 'income').sort((a, b) => b.total - a.total), [data]);
   const fixedExpenses       = useMemo(() => data.categories.filter(c => c.category_type === 'expense' && c.expense_nature === 'fixed' && !c.is_installment).sort((a, b) => b.total - a.total), [data]);
@@ -186,6 +188,27 @@ function FlowGeral({ year }) {
   if (loading) return <p className="text-slate-400 text-sm text-center py-20">Carregando...</p>;
 
   return (
+    <div className="space-y-3">
+      {/* Regime toggle */}
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-400 font-medium">Regime:</span>
+        <div className="flex rounded-lg overflow-hidden border border-slate-200 text-xs font-semibold">
+          <button onClick={() => setMode('accrual')}
+            className={`px-3 py-1.5 transition-colors ${mode === 'accrual' ? 'bg-slate-700 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+            Competência
+          </button>
+          <button onClick={() => setMode('cash')}
+            className={`px-3 py-1.5 transition-colors ${mode === 'cash' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+            Caixa
+          </button>
+        </div>
+        {mode === 'cash' && (
+          <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-medium">
+            Despesas de cartão contam no mês seguinte ao lançamento
+          </span>
+        )}
+      </div>
+
     <div className="flex gap-6">
       <div className="flex-1 overflow-x-auto bg-white rounded-2xl border border-slate-100">
         <table className="w-full border-collapse text-sm">
@@ -315,6 +338,7 @@ function FlowGeral({ year }) {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
