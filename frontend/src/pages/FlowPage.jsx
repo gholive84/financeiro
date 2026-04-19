@@ -228,7 +228,45 @@ function FlowGeral({ year }) {
             <Section title="Despesas Fixas"       rows={fixedExpenses}       type="expense" color="#7c3aed" />
             <Section title="Despesas Parceladas"  rows={installmentExpenses} type="expense" color="#2563eb" />
             <Section title="Despesas Variáveis"   rows={varExpenses}         type="expense" color="#dc2626" />
-            {(incomes.length > 0 || expenses.length > 0) && (
+            {(incomes.length > 0 || expenses.length > 0) && (<>
+              <tr className="border-t border-slate-200 bg-green-50/40">
+                <td className="px-3 py-2 text-xs font-bold text-green-700 sticky left-0 bg-green-50/40 z-10">Total Receitas</td>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                  const incCut = Array.from(cutTxs.values()).filter(c => c.tx.type === 'income' && c.month === m).reduce((s,c) => s + c.tx.amount, 0);
+                  const val = (monthTotals.inc[m] || 0) - incCut;
+                  return (
+                    <td key={m} className="px-2 py-2 text-right text-xs font-bold whitespace-nowrap text-green-700">
+                      {val === 0 ? '—' : fmt(val)}
+                    </td>
+                  );
+                })}
+                <td className="px-3 py-2 text-right text-xs font-bold whitespace-nowrap text-green-700">
+                  {(() => {
+                    const incCuts = Array.from(cutTxs.values()).filter(c => c.tx.type === 'income').reduce((s,c) => s + c.tx.amount, 0);
+                    const val = incomes.reduce((s,c) => s+c.total,0) - incCuts;
+                    return val === 0 ? '—' : fmt(val);
+                  })()}
+                </td>
+              </tr>
+              <tr className="bg-red-50/40">
+                <td className="px-3 py-2 text-xs font-bold text-red-700 sticky left-0 bg-red-50/40 z-10">Total Despesas</td>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                  const expCut = Array.from(cutTxs.values()).filter(c => c.tx.type === 'expense' && c.month === m).reduce((s,c) => s + c.tx.amount, 0);
+                  const val = (monthTotals.exp[m] || 0) - expCut;
+                  return (
+                    <td key={m} className="px-2 py-2 text-right text-xs font-bold whitespace-nowrap text-red-700">
+                      {val === 0 ? '—' : fmt(val)}
+                    </td>
+                  );
+                })}
+                <td className="px-3 py-2 text-right text-xs font-bold whitespace-nowrap text-red-700">
+                  {(() => {
+                    const expCuts = Array.from(cutTxs.values()).filter(c => c.tx.type === 'expense').reduce((s,c) => s + c.tx.amount, 0);
+                    const val = expenses.reduce((s,c) => s+c.total,0) - expCuts;
+                    return val === 0 ? '—' : fmt(val);
+                  })()}
+                </td>
+              </tr>
               <tr className="border-t-2 border-slate-300 bg-slate-50">
                 <td className="px-3 py-3 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10">Saldo</td>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
@@ -248,7 +286,7 @@ function FlowGeral({ year }) {
                   })()}
                 </td>
               </tr>
-            )}
+            </>)}
           </tbody>
         </table>
         {expenses.length === 0 && incomes.length === 0 && (
