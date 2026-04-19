@@ -44,7 +44,12 @@ function FlowGeral({ year }) {
     setDetailTxs([]);
     try {
       const { data: txs } = await api.get(`/transactions?month=${month}&year=${year}&category_id=${category.category_id}`);
-      setDetailTxs(txs);
+      const filtered = txs.filter(t => {
+        if (category.is_installment)              return !!t.installment_group_id;
+        if (category.expense_nature === 'fixed')  return t.expense_nature === 'fixed' && !t.installment_group_id;
+        return t.expense_nature !== 'fixed' && !t.installment_group_id;
+      });
+      setDetailTxs(filtered);
     } catch { setDetailTxs([]); }
     setDetailLoading(false);
   };
