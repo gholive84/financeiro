@@ -99,6 +99,7 @@ function FlowGeral({ year }) {
     if (category.months[month] === 0) return;
     setSelected({ category, month });
     fetchDetail(category, month);
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleEditSave = () => {
@@ -479,6 +480,7 @@ function FlowCartoes({ year }) {
     if (category.months[month] === 0) return;
     setSelected({ card, category, month });
     fetchDetail(card, category, month);
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleEditSave = () => {
