@@ -116,9 +116,11 @@ router.get('/cards', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/flow/installments — parcelas agrupadas por cartão
+// GET /api/flow/installments?year=2024 — parcelas mês a mês por cartão
 router.get('/installments', async (req, res, next) => {
   try {
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+
     const [rows] = await db.query(`
       SELECT
         cc.id          AS card_id,
@@ -127,22 +129,24 @@ router.get('/installments', async (req, res, next) => {
         cc.bank        AS card_bank,
         t.installment_group_id,
         t.installment_total,
+        MONTH(t.date)                                             AS month,
         MIN(t.description)                                        AS description,
-        MIN(t.amount)                                             AS amount_per_installment,
-        SUM(t.amount)                                             AS total_amount,
+        SUM(t.amount)                                             AS month_amount,
         SUM(CASE WHEN t.status = 'paid'    THEN 1 ELSE 0 END)    AS paid_count,
         SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END)    AS pending_count,
-        MIN(t.date)                                               AS first_date,
-        MAX(t.date)                                               AS last_date,
         COALESCE(c.name, 'Sem categoria')                         AS category_name,
-        COALESCE(c.color, '#64748B')                              AS category_color
+        COALESCE(c.color, '#64748B')                              AS category_color,
+        (SELECT SUM(t2.amount) FROM transactions t2
+          WHERE t2.installment_group_id = t.installment_group_id) AS full_total
       FROM transactions t
       INNER JOIN credit_cards cc ON t.credit_card_id = cc.id
       LEFT  JOIN categories   c  ON t.category_id    = c.id
-      WHERE t.installment_group_id IS NOT NULL AND t.installment_total > 1
-      GROUP BY cc.id, t.installment_group_id
-      ORDER BY cc.name, first_date DESC
-    `);
+      WHERE t.installment_group_id IS NOT NULL
+        AND t.installment_total > 1
+        AND YEAR(t.date) = ?
+      GROUP BY cc.id, t.installment_group_id, MONTH(t.date)
+      ORDER BY cc.name, t.installment_group_id, month
+    `, [year]);
 
     const cardMap = {};
     for (const r of rows) {
@@ -150,27 +154,38 @@ router.get('/installments', async (req, res, next) => {
         cardMap[r.card_id] = {
           card_id: r.card_id, card_name: r.card_name,
           card_color: r.card_color, card_bank: r.card_bank,
-          groups: [],
+          groups: {},
         };
       }
-      // strip " (X/N)" suffix added during creation
-      const desc = String(r.description).replace(/ \(\d+\/\d+\)$/, '');
-      cardMap[r.card_id].groups.push({
-        group_id: r.installment_group_id,
-        description: desc,
-        installment_total: r.installment_total,
-        amount_per_installment: parseFloat(r.amount_per_installment),
-        total_amount: parseFloat(r.total_amount),
-        paid_count: r.paid_count,
-        pending_count: r.pending_count,
-        first_date: r.first_date,
-        last_date: r.last_date,
-        category_name: r.category_name,
-        category_color: r.category_color,
-      });
+      const gid = r.installment_group_id;
+      if (!cardMap[r.card_id].groups[gid]) {
+        const desc = String(r.description).replace(/ \(\d+\/\d+\)$/, '');
+        cardMap[r.card_id].groups[gid] = {
+          group_id: gid,
+          description: desc,
+          installment_total: r.installment_total,
+          category_name: r.category_name,
+          category_color: r.category_color,
+          full_total: parseFloat(r.full_total) || 0,
+          months: {1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0},
+          paid_count: 0,
+          pending_count: 0,
+        };
+      }
+      cardMap[r.card_id].groups[gid].months[r.month] = parseFloat(r.month_amount);
+      cardMap[r.card_id].groups[gid].paid_count    += r.paid_count;
+      cardMap[r.card_id].groups[gid].pending_count += r.pending_count;
     }
 
-    res.json({ cards: Object.values(cardMap) });
+    const cards = Object.values(cardMap).map(card => ({
+      ...card,
+      groups: Object.values(card.groups).map(g => ({
+        ...g,
+        total: Object.values(g.months).reduce((s, v) => s + v, 0),
+      })),
+    }));
+
+    res.json({ year, cards });
   } catch (err) { next(err); }
 });
 

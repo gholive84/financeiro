@@ -318,77 +318,86 @@ function FlowCartoes({ year }) {
 }
 
 // ── Cartão Parcelas ───────────────────────────────────────────────────────────
-function FlowParcelas() {
+function FlowParcelas({ year }) {
   const [data, setData] = useState({ cards: [] });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    api.get('/flow/installments')
+    api.get(`/flow/installments?year=${year}`)
       .then(r => setData(r.data))
       .catch(() => setData({ cards: [] }))
       .finally(() => setLoading(false));
-  }, []);
-
-  const fmtDate = (d) => String(d).split('T')[0].split('-').reverse().join('/');
-  const fmtBRL = (v) => `R$ ${parseFloat(v).toFixed(2).replace('.', ',')}`;
+  }, [year]);
 
   if (loading) return <p className="text-slate-400 text-sm text-center py-20">Carregando...</p>;
-  if (!data.cards.length) return <p className="text-center text-slate-400 py-16 text-sm">Nenhuma compra parcelada encontrada.</p>;
+  if (!data.cards.length) return <p className="text-center text-slate-400 py-16 text-sm">Nenhuma compra parcelada em {year}.</p>;
 
   return (
     <div className="space-y-6">
-      {data.cards.map(card => (
-        <div key={card.card_id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
-          {/* Cabeçalho do cartão */}
-          <div className="flex items-center gap-2 px-5 py-3 border-b"
-            style={{ borderColor: card.card_color + '33', backgroundColor: card.card_color + '11' }}>
-            <CreditCard size={16} style={{ color: card.card_color }} />
-            <span className="font-semibold text-sm" style={{ color: card.card_color }}>{card.card_name}</span>
-            {card.card_bank && <span className="text-xs text-slate-400">· {card.card_bank}</span>}
-            <span className="ml-auto text-xs font-bold text-slate-500">{card.groups.length} parcelamento{card.groups.length !== 1 ? 's' : ''}</span>
-          </div>
+      {data.cards.map(card => {
+        const monthTotals = {};
+        for (let m = 1; m <= 12; m++)
+          monthTotals[m] = card.groups.reduce((s, g) => s + (g.months[m] || 0), 0);
+        const cardTotal = card.groups.reduce((s, g) => s + g.total, 0);
 
-          {/* Lista de parcelamentos */}
-          <div className="divide-y divide-slate-50 dark:divide-slate-700">
-            {card.groups.map(g => {
-              const pct = Math.round((g.paid_count / g.installment_total) * 100);
-              return (
-                <div key={g.group_id} className="px-5 py-4">
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{g.description}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {fmtDate(g.first_date)} → {fmtDate(g.last_date)}
-                      </p>
-                      <span className="inline-block mt-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
-                        style={{ backgroundColor: g.category_color + '22', color: g.category_color }}>
-                        {g.category_name}
-                      </span>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{fmtBRL(g.amount_per_installment)}<span className="text-xs font-normal text-slate-400">/mês</span></p>
-                      <p className="text-xs text-slate-400 mt-0.5">Total {fmtBRL(g.total_amount)}</p>
-                    </div>
-                  </div>
+        return (
+          <div key={card.card_id} className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+            {/* Cabeçalho */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b"
+              style={{ borderColor: card.card_color + '33', backgroundColor: card.card_color + '11' }}>
+              <CreditCard size={16} style={{ color: card.card_color }} />
+              <span className="font-semibold text-sm" style={{ color: card.card_color }}>{card.card_name}</span>
+              {card.card_bank && <span className="text-xs text-slate-400">· {card.card_bank}</span>}
+              <span className="ml-auto text-xs font-bold text-red-600">{fmt(cardTotal)}</span>
+            </div>
 
-                  {/* Progresso */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                      <span>{g.paid_count} paga{g.paid_count !== 1 ? 's' : ''} · {g.pending_count} pendente{g.pending_count !== 1 ? 's' : ''}</span>
-                      <span className="font-semibold">{g.paid_count}/{g.installment_total}x</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, backgroundColor: card.card_color }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 sticky left-0 bg-slate-50 dark:bg-slate-900 z-10 min-w-[180px]">Descrição</th>
+                  {MONTHS.map((m, i) => (
+                    <th key={i} className="px-2 py-2 text-right text-xs font-semibold text-slate-500 whitespace-nowrap">{m}</th>
+                  ))}
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500 whitespace-nowrap">No ano</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-purple-500 whitespace-nowrap">Montante</th>
+                </tr>
+              </thead>
+              <tbody>
+                {card.groups.map(g => (
+                  <tr key={g.group_id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 border-b border-slate-50 dark:border-slate-700">
+                    <td className="px-3 py-2 sticky left-0 bg-white dark:bg-slate-800 z-10 min-w-[180px] max-w-[240px]">
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{g.description}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                          style={{ backgroundColor: g.category_color + '22', color: g.category_color }}>
+                          {g.category_name}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{g.paid_count}/{g.installment_total}x</span>
+                      </div>
+                    </td>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                      <td key={m} className={`px-2 py-2 text-right whitespace-nowrap text-xs ${g.months[m] === 0 ? 'text-slate-300 dark:text-slate-600' : 'text-red-600 font-medium'}`}>
+                        {fmt(g.months[m])}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2 text-right text-xs font-bold text-red-700 whitespace-nowrap">{fmt(g.total)}</td>
+                    <td className="px-3 py-2 text-right text-xs font-bold text-purple-600 whitespace-nowrap">{fmt(g.full_total)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/30">
+                  <td className="px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 sticky left-0 bg-slate-50 dark:bg-slate-900 z-10">Total</td>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <td key={m} className="px-2 py-2 text-right text-xs font-bold text-red-700 whitespace-nowrap">{fmt(monthTotals[m])}</td>
+                  ))}
+                  <td className="px-3 py-2 text-right text-xs font-bold text-red-700">{fmt(cardTotal)}</td>
+                  <td className="px-3 py-2 text-right text-xs font-bold text-purple-600">{fmt(card.groups.reduce((s, g) => s + g.full_total, 0))}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -412,19 +421,17 @@ export default function FlowPage() {
           <h1 className="text-2xl font-bold text-slate-800">Fluxo Mensal</h1>
           <p className="text-sm text-slate-400 mt-1">Receitas e despesas por categoria e mês.</p>
         </div>
-        {tab !== 'parcelas' && (
-          <div className="flex items-center gap-2">
-            <button onClick={() => setYear(y => y - 1)}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-              <ChevronLeft size={16} className="text-slate-600" />
-            </button>
-            <span className="text-lg font-bold text-slate-800 w-16 text-center">{year}</span>
-            <button onClick={() => setYear(y => y + 1)}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-              <ChevronRight size={16} className="text-slate-600" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button onClick={() => setYear(y => y - 1)}
+            className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+            <ChevronLeft size={16} className="text-slate-600" />
+          </button>
+          <span className="text-lg font-bold text-slate-800 w-16 text-center">{year}</span>
+          <button onClick={() => setYear(y => y + 1)}
+            className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+            <ChevronRight size={16} className="text-slate-600" />
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -439,7 +446,7 @@ export default function FlowPage() {
 
       {tab === 'geral'    && <FlowGeral year={year} />}
       {tab === 'cartoes'  && <FlowCartoes year={year} />}
-      {tab === 'parcelas' && <FlowParcelas />}
+      {tab === 'parcelas' && <FlowParcelas year={year} />}
     </div>
   );
 }
