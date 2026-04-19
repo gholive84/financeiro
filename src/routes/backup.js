@@ -19,7 +19,7 @@ router.post('/', adminOnly, async (req, res, next) => {
     const [transaction_tags] = await db.query('SELECT * FROM transaction_tags');
     const [budgets]          = await db.query('SELECT * FROM budgets');
     const [savings]          = await db.query('SELECT * FROM savings');
-    const [users]            = await db.query('SELECT id, username, name, email, role, created_at FROM users');
+    const [users]            = await db.query('SELECT id, username, name, role, created_at FROM users');
 
     const counts = {
       transactions: transactions.length,
