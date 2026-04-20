@@ -55,10 +55,12 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete })
   const isNew = !initial?.id;
   const isGrouped = !isNew && (initial?.fixed_group_id || initial?.installment_group_id);
 
-  const handleDelete = async () => {
-    if (!confirm('Deletar esta transação?')) return;
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  const handleDelete = async (mode) => {
     try {
-      await api.delete(`/transactions/${initial.id}`);
+      const qs = mode === 'remaining' ? '?remaining=true' : '';
+      await api.delete(`/transactions/${initial.id}${qs}`);
       onDelete?.();
     } catch { alert('Erro ao deletar transação'); }
   };
@@ -316,22 +318,46 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete })
         className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         value={form.notes} onChange={e => set('notes', e.target.value)} />
 
-      <div className="flex gap-3 pt-2">
-        {!isNew && onDelete && (
-          <button type="button" onClick={handleDelete}
-            className="border border-red-200 text-red-500 rounded-xl py-2.5 px-4 text-sm font-semibold hover:bg-red-50 transition-colors">
-            Deletar
+      {deleteConfirm ? (
+        <div className="pt-2 rounded-xl border border-red-200 bg-red-50 p-3 space-y-2">
+          <p className="text-xs text-red-600 font-medium">
+            {isGrouped ? 'Como deseja deletar?' : 'Confirmar exclusão?'}
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {isGrouped && (
+              <button type="button" onClick={() => handleDelete('remaining')}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-lg py-2 text-xs font-semibold transition-colors">
+                Esta e as próximas
+              </button>
+            )}
+            <button type="button" onClick={() => handleDelete('single')}
+              className="flex-1 border border-red-300 text-red-500 rounded-lg py-2 text-xs font-semibold hover:bg-red-100 transition-colors">
+              {isGrouped ? 'Somente esta' : 'Confirmar'}
+            </button>
+            <button type="button" onClick={() => setDeleteConfirm(false)}
+              className="flex-1 border border-slate-200 text-slate-500 rounded-lg py-2 text-xs font-semibold hover:bg-slate-100 transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-3 pt-2">
+          {!isNew && onDelete && (
+            <button type="button" onClick={() => setDeleteConfirm(true)}
+              className="border border-red-200 text-red-500 rounded-xl py-2.5 px-4 text-sm font-semibold hover:bg-red-50 transition-colors">
+              Deletar
+            </button>
+          )}
+          <button type="button" onClick={onCancel}
+            className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            Cancelar
           </button>
-        )}
-        <button type="button" onClick={onCancel}
-          className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-          Cancelar
-        </button>
-        <button type="submit" disabled={loading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50">
-          {loading ? 'Salvando...' : 'Salvar'}
-        </button>
-      </div>
+          <button type="submit" disabled={loading}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50">
+            {loading ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      )}
     </form>
   );
 }
