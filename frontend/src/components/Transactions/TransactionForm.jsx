@@ -258,8 +258,8 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete })
         </div>
       )}
 
-      {/* Despesa fixa — conta, despesa */}
-      {form.type === 'expense' && !form.credit_card_id && (
+      {/* Recorrente — conta (despesa ou receita) */}
+      {!form.credit_card_id && (
         <div className={`rounded-xl border p-3 space-y-3 transition-colors ${isFixed ? 'border-violet-200 bg-violet-50 dark:bg-violet-900/20 dark:border-violet-700' : 'border-slate-200 dark:border-slate-600'}`}>
           <button type="button" onClick={() => set('expense_nature', isFixed ? null : 'fixed')}
             className="flex items-center gap-2 w-full text-left">
@@ -268,7 +268,7 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete })
             </div>
             <RepeatIcon size={14} className={isFixed ? 'text-violet-600' : 'text-slate-400'} />
             <span className={`text-sm font-medium ${isFixed ? 'text-violet-700 dark:text-violet-300' : 'text-slate-600 dark:text-slate-300'}`}>
-              Despesa fixa (recorrente)
+              {form.type === 'income' ? 'Receita recorrente' : 'Despesa fixa (recorrente)'}
             </span>
           </button>
           {isFixed && <MonthSelector color="violet" />}
