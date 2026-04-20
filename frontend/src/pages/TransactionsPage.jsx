@@ -414,6 +414,7 @@ export default function TransactionsPage() {
           initial={editing}
           onSave={handleSave}
           onCancel={() => { setModal(false); setEditing(null); }}
+          onDelete={handleSave}
         />
       </Modal>
 

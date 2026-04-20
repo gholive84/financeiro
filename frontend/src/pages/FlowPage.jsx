@@ -446,6 +446,7 @@ function FlowGeral({ year }) {
               initial={editTx}
               onSave={handleEditSave}
               onCancel={() => setEditTx(null)}
+              onDelete={handleEditSave}
             />
           </div>
         </div>
@@ -633,6 +634,7 @@ function FlowCartoes({ year }) {
               initial={editTx}
               onSave={handleEditSave}
               onCancel={() => setEditTx(null)}
+              onDelete={handleEditSave}
             />
           </div>
         </div>

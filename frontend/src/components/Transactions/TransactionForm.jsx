@@ -14,7 +14,7 @@ const empty = {
   tag_ids: [],
 };
 
-export default function TransactionForm({ initial, onSave, onCancel }) {
+export default function TransactionForm({ initial, onSave, onCancel, onDelete }) {
   const { categories, accounts, creditCards, loadCategories, loadAccounts, loadCreditCards } = useApp();
   const [form, setForm] = useState(initial ? {
     ...empty,
@@ -54,6 +54,14 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
   const isFixed = form.expense_nature === 'fixed';
   const isNew = !initial?.id;
   const isGrouped = !isNew && (initial?.fixed_group_id || initial?.installment_group_id);
+
+  const handleDelete = async () => {
+    if (!confirm('Deletar esta transação?')) return;
+    try {
+      await api.delete(`/transactions/${initial.id}`);
+      onDelete?.();
+    } catch { alert('Erro ao deletar transação'); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -309,6 +317,12 @@ export default function TransactionForm({ initial, onSave, onCancel }) {
         value={form.notes} onChange={e => set('notes', e.target.value)} />
 
       <div className="flex gap-3 pt-2">
+        {!isNew && onDelete && (
+          <button type="button" onClick={handleDelete}
+            className="border border-red-200 text-red-500 rounded-xl py-2.5 px-4 text-sm font-semibold hover:bg-red-50 transition-colors">
+            Deletar
+          </button>
+        )}
         <button type="button" onClick={onCancel}
           className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
           Cancelar
