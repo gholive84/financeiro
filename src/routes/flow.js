@@ -28,7 +28,7 @@ router.get('/monthly', async (req, res, next) => {
           FROM transactions t
           LEFT JOIN categories c ON t.category_id = c.id
           LEFT JOIN categories pc ON c.parent_id = pc.id
-          WHERE (
+          WHERE t.workspace_id = ? AND (
             (t.credit_card_id IS NULL AND YEAR(t.date) = ?)
             OR (t.credit_card_id IS NOT NULL AND (
               (YEAR(t.date) = ? AND MONTH(t.date) < 12)
@@ -37,7 +37,7 @@ router.get('/monthly', async (req, res, next) => {
           )
           GROUP BY t.type, t.expense_nature, is_installment, c.id, month
           ORDER BY t.type DESC, COALESCE(pc.name, c.name, 'Sem categoria'), c.name, month
-        `, [year, year, year])
+        `, [req.workspace_id, year, year, year])
       : await db.query(`
           SELECT
             t.type as tx_type,
@@ -52,10 +52,10 @@ router.get('/monthly', async (req, res, next) => {
           FROM transactions t
           LEFT JOIN categories c ON t.category_id = c.id
           LEFT JOIN categories pc ON c.parent_id = pc.id
-          WHERE YEAR(t.date) = ?
+          WHERE t.workspace_id = ? AND YEAR(t.date) = ?
           GROUP BY t.type, t.expense_nature, is_installment, c.id, MONTH(t.date)
           ORDER BY t.type DESC, COALESCE(pc.name, c.name, 'Sem categoria'), c.name, month
-        `, [year]);
+        `, [req.workspace_id, year]);
 
     // Build map: key = "type_nature_isInstallment_categoryId"
     const catMap = {};
@@ -108,10 +108,10 @@ router.get('/cards', async (req, res, next) => {
       INNER JOIN credit_cards cc ON t.credit_card_id = cc.id
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN categories pc ON c.parent_id = pc.id
-      WHERE YEAR(t.date) = ? AND t.type = 'expense'
+      WHERE t.workspace_id = ? AND YEAR(t.date) = ? AND t.type = 'expense'
       GROUP BY cc.id, c.id, MONTH(t.date)
       ORDER BY cc.name, COALESCE(pc.name, c.name, 'Sem categoria'), c.name, month
-    `, [year]);
+    `, [req.workspace_id, year]);
 
     const cardMap = {};
     for (const row of rows) {
@@ -170,16 +170,17 @@ router.get('/installments', async (req, res, next) => {
         COALESCE(c.name, 'Sem categoria')                         AS category_name,
         COALESCE(c.color, '#64748B')                              AS category_color,
         (SELECT SUM(t2.amount) FROM transactions t2
-          WHERE t2.installment_group_id = t.installment_group_id) AS full_total
+          WHERE t2.installment_group_id = t.installment_group_id AND t2.workspace_id = t.workspace_id) AS full_total
       FROM transactions t
       INNER JOIN credit_cards cc ON t.credit_card_id = cc.id
       LEFT  JOIN categories   c  ON t.category_id    = c.id
-      WHERE t.installment_group_id IS NOT NULL
+      WHERE t.workspace_id = ?
+        AND t.installment_group_id IS NOT NULL
         AND t.installment_total > 1
         AND YEAR(t.date) = ?
       GROUP BY cc.id, t.installment_group_id, MONTH(t.date)
       ORDER BY cc.name, t.installment_group_id, month
-    `, [year]);
+    `, [req.workspace_id, year]);
 
     const cardMap = {};
     for (const r of rows) {

@@ -11,10 +11,10 @@ router.get('/', async (req, res, next) => {
     const year  = parseInt(req.query.year)  || now.getFullYear();
 
     // Total balance
-    const [[{ total_balance }]] = await db.query('SELECT COALESCE(SUM(balance), 0) as total_balance FROM accounts');
+    const [[{ total_balance }]] = await db.query('SELECT COALESCE(SUM(balance), 0) as total_balance FROM accounts WHERE workspace_id = ?', [req.workspace_id]);
 
     // Accounts
-    const [accounts] = await db.query('SELECT * FROM accounts ORDER BY name');
+    const [accounts] = await db.query('SELECT * FROM accounts WHERE workspace_id = ? ORDER BY name', [req.workspace_id]);
 
     // Monthly income & expense
     const [[monthlyStats]] = await db.query(`
@@ -22,8 +22,8 @@ router.get('/', async (req, res, next) => {
         COALESCE(SUM(CASE WHEN type='income' AND status='paid' THEN amount ELSE 0 END), 0) as total_income,
         COALESCE(SUM(CASE WHEN type='expense' AND status='paid' THEN amount ELSE 0 END), 0) as total_expense
       FROM transactions
-      WHERE MONTH(date) = ? AND YEAR(date) = ?
-    `, [month, year]);
+      WHERE workspace_id = ? AND MONTH(date) = ? AND YEAR(date) = ?
+    `, [req.workspace_id, month, year]);
 
     // Budget progress
     const [budgets] = await db.query(`
@@ -33,15 +33,16 @@ router.get('/', async (req, res, next) => {
           WHERE t.category_id = b.category_id
             AND MONTH(t.date) = b.month AND YEAR(t.date) = b.year
             AND t.type = 'expense' AND t.status = 'paid'
+            AND t.workspace_id = b.workspace_id
         ), 0) as amount_spent
       FROM budgets b
       JOIN categories c ON b.category_id = c.id
-      WHERE b.month = ? AND b.year = ?
+      WHERE b.workspace_id = ? AND b.month = ? AND b.year = ?
       ORDER BY c.name
-    `, [month, year]);
+    `, [req.workspace_id, month, year]);
 
     // Savings boxes
-    const [savings] = await db.query('SELECT * FROM savings_boxes ORDER BY created_at DESC');
+    const [savings] = await db.query('SELECT * FROM savings_boxes WHERE workspace_id = ? ORDER BY created_at DESC', [req.workspace_id]);
 
     // Recent transactions (current month only)
     const [recentTransactions] = await db.query(`
@@ -51,10 +52,10 @@ router.get('/', async (req, res, next) => {
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN accounts a ON t.account_id = a.id
       LEFT JOIN credit_cards cc ON t.credit_card_id = cc.id
-      WHERE MONTH(t.date) = ? AND YEAR(t.date) = ?
+      WHERE t.workspace_id = ? AND MONTH(t.date) = ? AND YEAR(t.date) = ?
       ORDER BY t.date DESC, t.created_at DESC
       LIMIT 10
-    `, [month, year]);
+    `, [req.workspace_id, month, year]);
 
     res.json({
       total_balance: parseFloat(total_balance),
@@ -95,13 +96,14 @@ router.get('/expenses-chart', async (req, res, next) => {
         COALESCE(SUM(t.amount), 0) as total
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
-      WHERE t.type = 'expense'
+      WHERE t.workspace_id = ?
+        AND t.type = 'expense'
         AND t.status = 'paid'
         AND MONTH(t.date) = ?
         AND YEAR(t.date) = ?
       GROUP BY t.category_id, c.name, c.color
       ORDER BY total DESC
-    `, [month, year]);
+    `, [req.workspace_id, month, year]);
 
     res.json({
       month, year,

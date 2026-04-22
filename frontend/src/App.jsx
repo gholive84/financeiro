@@ -3,7 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
+import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import Sidebar from './components/shared/Sidebar';
+import WorkspaceSelector from './components/Workspace/WorkspaceSelector';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import CalendarPage from './pages/CalendarPage';
@@ -19,9 +21,11 @@ import ImportPage from './pages/ImportPage';
 import TagsPage from './pages/TagsPage';
 import FlowPage from './pages/FlowPage';
 import BackupPage from './pages/BackupPage';
+import WorkspacesPage from './pages/WorkspacesPage';
 
 function AppLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { current: workspace, loading: wsLoading, workspaces, selectWorkspace, initAfterLogin } = useWorkspace();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -29,7 +33,12 @@ function AppLayout() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, []);
 
-  if (loading) {
+  // Init workspace when user logs in
+  useEffect(() => {
+    if (user) initAfterLogin();
+  }, [user]);
+
+  if (authLoading || (user && wsLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -38,6 +47,11 @@ function AppLayout() {
   }
 
   if (!user) return <LoginPage />;
+
+  // If user has multiple workspaces and none selected yet
+  if (!workspace && workspaces.length > 1) {
+    return <WorkspaceSelector onSelect={selectWorkspace} />;
+  }
 
   return (
     <AppProvider>
@@ -67,6 +81,7 @@ function AppLayout() {
                 <Route path="/tags" element={<TagsPage />} />
                 <Route path="/flow" element={<FlowPage />} />
                 <Route path="/backup" element={<BackupPage />} />
+                <Route path="/workspaces" element={<WorkspacesPage />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </div>
@@ -81,7 +96,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppLayout />
+        <WorkspaceProvider>
+          <AppLayout />
+        </WorkspaceProvider>
       </AuthProvider>
     </BrowserRouter>
   );

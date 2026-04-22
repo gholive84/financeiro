@@ -172,9 +172,9 @@ router.post('/preview', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Arquivo não recebido' });
 
-    const [categories] = await db.query('SELECT id, name, type FROM categories');
-    const [accounts] = await db.query('SELECT id, name FROM accounts');
-    const [creditCards] = await db.query('SELECT id, name, bank FROM credit_cards');
+    const [categories] = await db.query('SELECT id, name, type FROM categories WHERE workspace_id = ?', [req.workspace_id]);
+    const [accounts] = await db.query('SELECT id, name FROM accounts WHERE workspace_id = ?', [req.workspace_id]);
+    const [creditCards] = await db.query('SELECT id, name, bank FROM credit_cards WHERE workspace_id = ?', [req.workspace_id]);
 
     const mime = req.file.mimetype;
     const buffer = req.file.buffer;
@@ -242,10 +242,10 @@ router.post('/save', async (req, res, next) => {
       const groupId = info ? groupMap[`${t.description}|${info.total}`] : null;
 
       await db.query(
-        `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, user_id, installment_total, installment_current, installment_group_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, user_id, installment_total, installment_current, installment_group_id, workspace_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [t.description, t.amount, t.date, t.type, t.account_id || null, t.credit_card_id || null, t.category_id || null, t.status || 'paid', req.user?.id || null,
-         info ? info.total : null, info ? info.current : null, groupId]
+         info ? info.total : null, info ? info.current : null, groupId, req.workspace_id]
       );
 
       if ((t.status === 'paid' || !t.status) && t.account_id) {

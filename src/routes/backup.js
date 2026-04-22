@@ -11,15 +11,21 @@ if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 // POST /api/backup — gera e salva no servidor
 router.post('/', adminOnly, async (req, res, next) => {
   try {
-    const [transactions]      = await db.query('SELECT * FROM transactions ORDER BY date DESC');
-    const [categories]        = await db.query('SELECT * FROM categories');
-    const [accounts]          = await db.query('SELECT * FROM accounts');
-    const [credit_cards]      = await db.query('SELECT * FROM credit_cards');
-    const [tags]              = await db.query('SELECT * FROM tags');
-    const [transaction_tags]  = await db.query('SELECT * FROM transaction_tags');
-    const [budgets]           = await db.query('SELECT * FROM budgets');
-    const [savings_boxes]     = await db.query('SELECT * FROM savings_boxes');
-    const [savings_movements] = await db.query('SELECT * FROM savings_movements');
+    const [transactions]      = await db.query('SELECT * FROM transactions WHERE workspace_id = ? ORDER BY date DESC', [req.workspace_id]);
+    const [categories]        = await db.query('SELECT * FROM categories WHERE workspace_id = ?', [req.workspace_id]);
+    const [accounts]          = await db.query('SELECT * FROM accounts WHERE workspace_id = ?', [req.workspace_id]);
+    const [credit_cards]      = await db.query('SELECT * FROM credit_cards WHERE workspace_id = ?', [req.workspace_id]);
+    const [tags]              = await db.query('SELECT * FROM tags WHERE workspace_id = ?', [req.workspace_id]);
+    const txIds = transactions.map(t => t.id);
+    const [transaction_tags]  = txIds.length
+      ? await db.query(`SELECT * FROM transaction_tags WHERE transaction_id IN (${txIds.map(() => '?').join(',')})`, txIds)
+      : [[]];
+    const [budgets]           = await db.query('SELECT * FROM budgets WHERE workspace_id = ?', [req.workspace_id]);
+    const [savings_boxes]     = await db.query('SELECT * FROM savings_boxes WHERE workspace_id = ?', [req.workspace_id]);
+    const sbIds = savings_boxes.map(s => s.id);
+    const [savings_movements] = sbIds.length
+      ? await db.query(`SELECT * FROM savings_movements WHERE savings_box_id IN (${sbIds.map(() => '?').join(',')})`, sbIds)
+      : [[]];
     const [users]             = await db.query('SELECT id, username, name, role, created_at FROM users');
 
     const counts = {

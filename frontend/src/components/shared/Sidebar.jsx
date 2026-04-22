@@ -3,9 +3,10 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, ArrowLeftRight, CreditCard,
   PieChart, PiggyBank, Wallet, Tag, Sparkles, Users, LogOut, X, Shield, User, Upload,
-  TrendingUp, Hash, Moon, Sun, Settings, ChevronDown, Database,
+  TrendingUp, Hash, Moon, Sun, Settings, ChevronDown, Database, Building2, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -13,7 +14,7 @@ const nav = [
   { to: '/flow', icon: TrendingUp, label: 'Fluxo Mensal' },
   { to: '/calendar', icon: Calendar, label: 'Calendário' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
-  { to: '/accounts', icon: Wallet, label: 'Contas' },
+  { to: '/accounts', icon: Wallet, label: 'Contas Bancárias' },
   { to: '/credit-cards', icon: CreditCard, label: 'Cartões' },
   { to: '/categories', icon: Tag, label: 'Categorias' },
   { to: '/tags', icon: Hash, label: 'Tags' },
@@ -30,8 +31,10 @@ const linkClass = (isActive) =>
 
 export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuth();
+  const { workspaces, current: workspace, selectWorkspace } = useWorkspace();
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [wsOpen, setWsOpen] = useState(false);
 
   const toggleTheme = () => {
     const next = !isDark;
@@ -58,6 +61,33 @@ export default function Sidebar({ open, onClose }) {
           </button>
         </div>
 
+        {/* Workspace switcher */}
+        {workspace && (
+          <div className="px-3 pt-3">
+            <button onClick={() => setWsOpen(o => !o)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+              <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{workspace.name.charAt(0).toUpperCase()}</span>
+              </div>
+              <span className="flex-1 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{workspace.name}</span>
+              {workspaces.length > 1 && <ChevronDown size={12} className={`text-slate-400 transition-transform flex-shrink-0 ${wsOpen ? 'rotate-180' : ''}`} />}
+            </button>
+            {wsOpen && workspaces.length > 1 && (
+              <div className="mt-1 space-y-0.5">
+                {workspaces.filter(w => w.id !== workspace.id).map(w => (
+                  <button key={w.id} onClick={() => { selectWorkspace(w); setWsOpen(false); onClose(); }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left">
+                    <div className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-300">{w.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{w.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {nav.map(({ to, icon: Icon, label, highlight }) => (
@@ -75,8 +105,8 @@ export default function Sidebar({ open, onClose }) {
             </NavLink>
           ))}
 
-          {/* Configurações — admin only */}
-          {user?.role === 'admin' && (
+          {/* Configurações — admin / super_admin */}
+          {(user?.role === 'admin' || user?.role === 'super_admin') && (
             <div>
               <button
                 onClick={() => setSettingsOpen(o => !o)}
@@ -88,6 +118,12 @@ export default function Sidebar({ open, onClose }) {
 
               {settingsOpen && (
                 <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-100 dark:border-slate-700 pl-3">
+                  {user?.role === 'super_admin' && (
+                    <NavLink to="/workspaces" onClick={onClose}
+                      className={({ isActive }) => linkClass(isActive)}>
+                      <Building2 size={16} /> Contas
+                    </NavLink>
+                  )}
                   <NavLink to="/users" onClick={onClose}
                     className={({ isActive }) => linkClass(isActive)}>
                     <Users size={16} /> Usuários
@@ -106,7 +142,7 @@ export default function Sidebar({ open, onClose }) {
         <div className="px-4 py-4 border-t border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl mb-2">
             <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
-              {user?.role === 'admin' ? <Shield size={15} className="text-blue-600" /> : <User size={15} className="text-slate-500 dark:text-slate-400" />}
+              {user?.role === 'super_admin' ? <Shield size={15} className="text-purple-600" /> : user?.role === 'admin' ? <Shield size={15} className="text-blue-600" /> : <User size={15} className="text-slate-500 dark:text-slate-400" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{user?.name || user?.username}</p>

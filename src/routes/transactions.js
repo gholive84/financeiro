@@ -95,8 +95,8 @@ async function setTags(transactionId, tagIds) {
 router.get('/', async (req, res, next) => {
   try {
     const { month, year, type, account_id, credit_card_id, status, start_date, end_date } = req.query;
-    let sql = transactionSelect + ' WHERE 1=1';
-    const params = [];
+    let sql = transactionSelect + ' WHERE t.workspace_id = ?';
+    const params = [req.workspace_id];
 
     if (start_date && end_date) {
       sql += ' AND t.date >= ? AND t.date <= ?';
@@ -136,8 +136,8 @@ router.get('/', async (req, res, next) => {
 router.get('/calendar/:year/:month', async (req, res, next) => {
   try {
     const { year, month } = req.params;
-    const sql = transactionSelect + ' WHERE YEAR(t.date) = ? AND MONTH(t.date) = ? ORDER BY t.date, t.created_at';
-    const [rows] = await db.query(sql, [year, month]);
+    const sql = transactionSelect + ' WHERE t.workspace_id = ? AND YEAR(t.date) = ? AND MONTH(t.date) = ? ORDER BY t.date, t.created_at';
+    const [rows] = await db.query(sql, [req.workspace_id, year, month]);
 
     const formatted = await attachTags(rows.map(formatTransaction));
 
@@ -187,12 +187,12 @@ router.post('/', async (req, res, next) => {
         const fixedStatus = credit_card_id ? 'pending' : (fixedDateStr <= todayStr ? 'paid' : 'pending');
         const [result] = await db.query(
           `INSERT INTO transactions
-            (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, expense_nature, fixed_group_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fixed', ?)`,
+            (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, expense_nature, fixed_group_id, workspace_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fixed', ?, ?)`,
           [description, amount, fixedDateStr, type,
            credit_card_id ? null : (account_id || null),
            credit_card_id || null,
-           category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId]
+           category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId, req.workspace_id]
         );
         if (fixedStatus === 'paid' && account_id) {
           const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
@@ -219,9 +219,9 @@ router.post('/', async (req, res, next) => {
         const installDateStr = installDate.toISOString().split('T')[0];
         const desc = `${description} (${i + 1}/${numInstallments})`;
         const [result] = await db.query(
-          `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, installment_total, installment_current, installment_group_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [desc, installmentAmount, installDateStr, type, null, credit_card_id, category_id || null, 'pending', notes || null, req.user?.id || null, numInstallments, i + 1, groupId]
+          `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, installment_total, installment_current, installment_group_id, workspace_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [desc, installmentAmount, installDateStr, type, null, credit_card_id, category_id || null, 'pending', notes || null, req.user?.id || null, numInstallments, i + 1, groupId, req.workspace_id]
         );
         insertedIds.push(result.insertId);
       }
@@ -232,9 +232,9 @@ router.post('/', async (req, res, next) => {
 
     // --- TRANSAÇÃO SIMPLES ---
     const [result] = await db.query(
-      `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes, user_id, expense_nature)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, recurring_template_id || null, status || 'paid', notes || null, req.user?.id || null, expense_nature || null]
+      `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, is_recurring, recurring_template_id, status, notes, user_id, expense_nature, workspace_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [description, amount, date, type, account_id || null, credit_card_id || null, category_id || null, is_recurring || false, recurring_template_id || null, status || 'paid', notes || null, req.user?.id || null, expense_nature || null, req.workspace_id]
     );
 
     if ((status === 'paid' || !status) && account_id) {
@@ -255,7 +255,7 @@ router.put('/:id', async (req, res, next) => {
             is_recurring, status, notes, expense_nature, fixed_months, tag_ids,
             update_remaining } = req.body;
 
-    const [old] = await db.query('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
+    const [old] = await db.query('SELECT * FROM transactions WHERE id = ? AND workspace_id = ?', [req.params.id, req.workspace_id]);
     if (!old.length) return res.status(404).json({ error: 'Transação não encontrada' });
     const prev = old[0];
 
@@ -289,9 +289,9 @@ router.put('/:id', async (req, res, next) => {
         const fixedDateStr = fixedDate.toISOString().split('T')[0];
         const fixedStatus = effectiveCCId ? 'pending' : (fixedDateStr <= todayStr ? 'paid' : 'pending');
         await db.query(
-          `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, expense_nature, fixed_group_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fixed', ?)`,
-          [description, amount, fixedDateStr, type, effectiveAccountId, effectiveCCId, category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId]
+          `INSERT INTO transactions (description, amount, date, type, account_id, credit_card_id, category_id, status, notes, user_id, expense_nature, fixed_group_id, workspace_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fixed', ?, ?)`,
+          [description, amount, fixedDateStr, type, effectiveAccountId, effectiveCCId, category_id || null, fixedStatus, notes || null, req.user?.id || null, groupId, req.workspace_id]
         );
         if (fixedStatus === 'paid' && account_id) {
           const delta = type === 'income' ? parseFloat(amount) : -parseFloat(amount);
@@ -354,7 +354,7 @@ router.patch('/bulk', async (req, res, next) => {
     if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar' });
 
     const placeholders = ids.map(() => '?').join(',');
-    await db.query(`UPDATE transactions SET ${sets.join(', ')} WHERE id IN (${placeholders})`, [...params, ...ids]);
+    await db.query(`UPDATE transactions SET ${sets.join(', ')} WHERE workspace_id = ? AND id IN (${placeholders})`, [...params, req.workspace_id, ...ids]);
     res.json({ updated: ids.length });
   } catch (err) { next(err); }
 });
@@ -364,7 +364,7 @@ router.patch('/bulk', async (req, res, next) => {
 // ?remaining=true → deleta esta e as próximas (por data / número de parcela)
 router.delete('/:id', async (req, res, next) => {
   try {
-    const [old] = await db.query('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
+    const [old] = await db.query('SELECT * FROM transactions WHERE id = ? AND workspace_id = ?', [req.params.id, req.workspace_id]);
     if (!old.length) return res.status(404).json({ error: 'Transação não encontrada' });
     const prev = old[0];
 

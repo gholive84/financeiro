@@ -31,9 +31,9 @@ router.post('/transcribe', upload.single('audio'), async (req, res, next) => {
     const transcript = whisperRes.data.text;
 
     // 2. Buscar dados para contexto
-    const [categories] = await db.query('SELECT id, name, type FROM categories');
-    const [accounts] = await db.query('SELECT id, name, type FROM accounts');
-    const [creditCards] = await db.query('SELECT id, name, bank FROM credit_cards');
+    const [categories] = await db.query('SELECT id, name, type FROM categories WHERE workspace_id = ?', [req.workspace_id]);
+    const [accounts] = await db.query('SELECT id, name, type FROM accounts WHERE workspace_id = ?', [req.workspace_id]);
+    const [creditCards] = await db.query('SELECT id, name, bank FROM credit_cards WHERE workspace_id = ?', [req.workspace_id]);
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -105,9 +105,9 @@ router.post('/text', async (req, res, next) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'Texto não recebido' });
 
-    const [categories] = await db.query('SELECT id, name, type FROM categories');
-    const [accounts] = await db.query('SELECT id, name, type FROM accounts');
-    const [creditCards] = await db.query('SELECT id, name, bank FROM credit_cards');
+    const [categories] = await db.query('SELECT id, name, type FROM categories WHERE workspace_id = ?', [req.workspace_id]);
+    const [accounts] = await db.query('SELECT id, name, type FROM accounts WHERE workspace_id = ?', [req.workspace_id]);
+    const [creditCards] = await db.query('SELECT id, name, bank FROM credit_cards WHERE workspace_id = ?', [req.workspace_id]);
     const today = new Date().toISOString().split('T')[0];
 
     const prompt = `Você é um assistente de finanças pessoais. Interprete o texto abaixo e extraia os dados de uma transação financeira.
